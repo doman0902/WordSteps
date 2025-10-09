@@ -1,0 +1,26 @@
+# 1. ÁLTALÁNOS IDE és OS FÁJLOK
+.idea/workspace.xml
+.DS_Store
+
+# 2. PYTHON KIZÁRÁSOK
+# Virtuális környezetek
+.venv/
+venv/
+# Build és cache fájlok
+__pycache__/
+*.pyc
+
+# 3. ANDROID/GRADLE KIZÁRÁSOK
+# Az Android modul build kimenetei
+/AndroidApp/app/build/
+/AndroidApp/build/
+# Gradle cache és generált beállítások
+/AndroidApp/.gradle/
+/AndroidApp/local.properties
+/AndroidApp/.idea/
+/AndroidApp/captures/
+
+# 4. ADATBÁZIS KIZÁRÁSOK (SOHA NE KÖVESS ÉLŐ ADATOT!)
+# Feltételezve, hogy a Database mappában van az adatbázis
+/Database/*.db
+/Database/*.sqlite
