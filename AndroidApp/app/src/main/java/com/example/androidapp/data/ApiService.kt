@@ -12,8 +12,19 @@ data class TestResponse(
     val message: String
 )
 
+@Serializable
+data class QuizWordResponse(
+    val id:Int,
+    val correct: String,
+    val cefr_level: String,
+    val options: List<String>
+)
+
 private const val BASE_URL = "http://192.168.0.144:8000/"
 
+private val json= Json{
+    ignoreUnknownKeys=true
+}
 private val retrofit = Retrofit.Builder()
     .addConverterFactory(Json.asConverterFactory("application/json".toMediaType()))
     .baseUrl(BASE_URL)
@@ -21,8 +32,13 @@ private val retrofit = Retrofit.Builder()
 
 interface ApiService {
     @GET("test")
-    suspend fun getTestMessage(): TestResponse 
+    suspend fun getTestMessage(): TestResponse
+
+    @GET("quiz_word")
+    suspend fun getQuizWord(): QuizWordResponse
 }
+
+
 
 object Api {
     val retrofitService: ApiService by lazy {
