@@ -70,7 +70,7 @@ fun MainMenuScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(text = "CEFR Szint: ${quizData.cefr_level}")
                     Spacer(modifier = Modifier.height(32.dp))
-                    
+
                     quizData.options.forEach { option ->
                         val isButtonEnabled = (isCorrect == null)
                         val buttonColors = when {
