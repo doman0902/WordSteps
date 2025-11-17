@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from fastapi import Depends
 from sqlalchemy.orm import DeclarativeBase 
 from contextlib import asynccontextmanager
+import pandas as pd
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./words.db"
 
@@ -31,6 +32,60 @@ class QuizWordResponse(BaseModel):
     correct: str
     options: List[str]
 
+def swap_vowel(word):
+    """Felcserél egy véletlenszerű magánhangzót egy másikra."""
+    vowels = 'aeiou'
+    vowel_indices = [i for i, char in enumerate(word) if char in vowels]
+    if not vowel_indices:
+        return word
+
+    idx_to_swap = random.choice(vowel_indices)
+    original_vowel = word[idx_to_swap]
+    new_vowel = random.choice([v for v in vowels if v != original_vowel])
+    return word[:idx_to_swap] + new_vowel + word[idx_to_swap+1:]
+
+def omit_double_letter(word):
+    """Elhagy egyet egy dupla mássalhangzóból (pl. address -> adres)."""
+    for i in range(len(word) - 1):
+        if word[i] == word[i+1] and word[i] not in 'aeiou':
+            return word[:i] + word[i+1:]
+    return word
+
+def transpose_letters(word):
+    """Felcserél két szomszédos betűt (pl. friend -> freind)."""
+    if len(word) < 2:
+        return word
+    idx = random.randint(0, len(word) - 2)
+    return word[:idx] + word[idx+1] + word[idx] + word[idx+2:]
+
+def swap_phonetic(word):
+    """Fonetikus cserét végez (pl. ph -> f)."""
+    if 'ph' in word:
+        return word.replace('ph', 'f', 1)
+    return word
+
+transformation_strategies = [swap_vowel, omit_double_letter, transpose_letters, swap_phonetic]
+
+def generate_smart_distractors(correct_word: str) -> List[str]:
+    """
+    Generál 2 db egyedi, "okos" disztraktort a megadott stratégiák alapján.
+    """
+    distractors = set()
+    
+    attempts = 0
+    while len(distractors) < 2 and attempts < 10:
+        strategy = random.choice(transformation_strategies)
+        new_word = strategy(correct_word)
+        
+        if new_word != correct_word and new_word not in distractors:
+            distractors.add(new_word)
+        attempts += 1
+        
+    while len(distractors) < 2:
+        distractors.add(correct_word + random.choice(['a', 'x', 'z']))
+
+    return list(distractors)
+
 @asynccontextmanager
 async def lifespan(app: fastapi.FastAPI):
     print("Szerver indul, adatbázis ellenőrzése...")
@@ -41,14 +96,28 @@ async def lifespan(app: fastapi.FastAPI):
         count = db.query(DbWord).count()
         if count == 0:
             print("Adatbázis üres, feltöltés (seeding) indul...")
-            example_words = [
-                DbWord(correct="apple", cefr_level="A1"),
-                DbWord(correct="house", cefr_level="A1"),
-                DbWord(correct="beautiful", cefr_level="B1")
-            ]
-            db.add_all(example_words)
-            db.commit()
-            print("Adatbázis feltöltve 3 szóval.")
+            try:
+                df = pd.read_csv('b2_words.csv',sep=';',encoding='latin1')
+                print(f"Beolvasva {len(df)} szó a CSV fájlból.")
+
+                words_from_csv = df['word'].tolist()
+                new_words_to_db = []
+
+                for word in words_from_csv:
+                    new_words_to_db.append(DbWord(correct=str(word).lower(), cefr_level="B2"))
+
+                db.add_all(new_words_to_db)
+                db.commit()
+                print(f"Adatbázis feltöltve {len(new_words_to_db)} szóval.")
+
+            except FileNotFoundError:
+                print(f"HIBA: A '{'b2_words.csv'}' fájl nem található! Az adatbázis üres marad.")
+                print("Kérlek, töltsd le a CSV-t és mentsd az app.py mellé.")
+            except KeyError:
+                print(f"HIBA: Nem található 'word' oszlop a '{'b2_words.csv'}'-ban.")
+            except Exception as e:
+                print(f"HIBA a CSV beolvasása vagy adatbázisba írása közben: {e}")
+            
         else:
             print(f"Adatbázis már tartalmazza  a {count} szót.")
     finally:
@@ -80,7 +149,7 @@ def get_quiz_word(db: Session=Depends(get_db)):
         raise fastapi.HTTPException(status_code=404, detail="Nincsenek szavak az adatbázisban")
 
     correct=random_word_from_db.correct
-    distractors=[correct[1:] + "a", correct + "xyz"]
+    distractors=generate_smart_distractors(correct)
     options=[correct]+distractors
     random.shuffle(options)
 
