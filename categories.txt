@@ -1,0 +1,719 @@
+Angol Helyesírási Hibakategóriák (Kibővített Adatbázis)
+
+Ez a dokumentum 7 fő kategóriába sorolja a leggyakoribb angol helyesírási hibákat, kategóriánként körülbelül 50 példával. Az elírt szavak nem minősülnek létező angol szónak, és nem tartalmaznak hármas mássalhangzó-ismétlődést.
+
+1. Incorrectly Repeated Consonants (Hibásan duplázott mássalhangzók)
+
+Olyan esetek, amikor egy mássalhangzót feleslegesen duplázunk meg, vagy rossz helyen duplázzuk.
+
+commitment – committment
+
+harass – harrass
+
+inoculate – innoculate
+
+occasion – occassion
+
+recommend – reccommend
+
+across – accross
+
+until – untill
+
+useful – usefull
+
+professor – proffessor
+
+control – controll
+
+writing – writting
+
+original – orriginal
+
+process – proccess
+
+necessary – neccessary
+
+apartment – appartment
+
+fulfill – fullfill
+
+business – bussiness
+
+already – allready
+
+always – allways
+
+amount – ammount
+
+around – arround
+
+balance – ballance
+
+coming – comming
+
+equipment – equippment
+
+finally – finnally
+
+grateful – gratefull
+
+image – immage
+
+manual – mannuall
+
+memory – memmory
+
+novel – novell
+
+operator – opperator
+
+opinion – oppinion
+
+parallel – parrallel
+
+planet – plannet
+
+position – possition
+
+possible – possibble
+
+program – programm
+
+total – totall
+
+truly – trully
+
+amazing – ammazing
+
+balance – ballance
+
+develop – devellop
+
+focus – focuss
+
+limit – limmit
+
+2. Wrong Vowel (Rossz magánhangzó)
+
+Amikor egy magánhangzót egy másikra cserélünk (gyakran a kiejtés hasonlósága miatt).
+
+definitely – definately
+
+separate – seperate
+
+independent – independant
+
+cemetery – cemetary
+
+grammar – grammer
+
+occurrence – occurance
+
+resistance – resistence
+
+attendance – attendence
+
+privilege – privelege
+
+ridiculous – rediculous
+
+dependent – dependant
+
+calendar – calender
+
+maintenance – maintainance
+
+relevant – relevent
+
+category – catagory
+
+apparent – aparant
+
+existence – existance
+
+persistent – persistant
+
+reference – referance
+
+guidance – guidence
+
+holiday – holaday
+
+describe – discribe
+
+preparation – preperation
+
+explanation – explaination
+
+optimistic – optomistic
+
+original – origenal
+
+satisfy – satesfy
+
+similar – simalar
+
+vertical – vertacal
+
+definite – definate
+
+brilliant – brillent
+
+performance – performence
+
+insurance – insurence
+
+appearance – appearence
+
+difference – differance
+
+evidence – evedence
+
+intelligence – intelligance
+
+sequence – sequance
+
+sentence – sentance
+
+temperature – temprature
+
+environment – enviroment
+
+accommodate – accomadate
+
+exaggerate – exagerate
+
+dictionary – dictionery
+
+library – libery
+
+medicine – medecine
+
+negative – negitive
+
+business – busyness
+
+pleasant – plesant
+
+separate – separete
+
+3. Wrong Consonant (Rossz mássalhangzó)
+
+Amikor egy mássalhangzót egy másikra cserélünk (pl. s helyett c).
+
+consensus – concensus
+
+supersede – supercede
+
+absence – absense
+
+exercise – excercise
+
+ascend – acsend
+
+conscious – concious
+
+discipline – disapline
+
+fascinate – fasinate
+
+muscle – mussle
+
+scenery – senery
+
+schedule – skedule
+
+vacuum – vaccum
+
+descend – decend
+
+science – sience
+
+scissors – sissors
+
+rhythm – rythm
+
+hierarchy – hierachy
+
+height – heigth
+
+eighth – eigth
+
+jewelry – jewlery
+
+yacht – yatch
+
+Arctic – Artic
+
+asterisk – asterix
+
+bureau – beauro
+
+clothes – cloaths
+
+develop – develope
+
+equipment – equiptment
+
+foreign – foriegn
+
+guarantee – gaurantee
+
+immediate – imediate
+
+knowledge – knowlege
+
+length – lenth
+
+parallel – parrallel
+
+physical – fisical
+
+piece – peice
+
+receipt – receit
+
+soldier – solider
+
+stomach – stomack
+
+strength – strenth
+
+technique – tecnique
+
+though – thow
+
+thought – thot
+
+through – thru
+
+tomorrow – tommorow
+
+whether – wether
+
+psychology – sycology
+
+alphabet – alfabet
+
+phantom – fantom
+
+character – karacter
+
+choir – quire (Kiejtés utáni, nem létező szóként)
+
+4. Reversed Order of Double Vowels (Felcserélt magánhangzó-sorrend)
+
+A hírhedt "i before e" szabály és társai.
+
+receive – recieve
+
+niece – neice
+
+pharaoh – pharoah
+
+weird – wierd
+
+gauge – guage
+
+believe – beleive
+
+achieve – acheive
+
+chief – cheif
+
+friend – freind
+
+field – feild
+
+weight – wieght
+
+yield – yeild
+
+siege – seige
+
+protein – protien
+
+reign – riegn
+
+foreign – foriegn
+
+ancient – anceint
+
+beige – biege
+
+caffeine – caffiene
+
+conscience – consience
+
+deign – diegn
+
+efficient – efficeint
+
+feint – fient
+
+glacier – glaceir
+
+grief – greif
+
+hygiene – hygeine
+
+leisure – liesure
+
+mischievous – mischievious
+
+neighbor – nieghbor
+
+patience – patiance
+
+priest – preist
+
+relief – releif
+
+science – sceince
+
+society – soceity
+
+sovereign – soveriegn
+
+species – speceis
+
+thief – theif
+
+veil – viel
+
+vein – vien
+
+view – veiw
+
+brief – breif
+
+ceiling – cieling
+
+receipt – reciept
+
+freight – frieght
+
+height – hieght
+
+deceit – deceite
+
+perceive – percieve
+
+conceited – conceited
+
+sleigh – sliegh
+
+heifer – hiefer
+
+5. Extra Letters (Felesleges betűk)
+
+Amikor felesleges néma betűket vagy szótagokat szúrunk be.
+
+mischievous – mischievious
+
+publicly – publically
+
+truly – truely
+
+column – columne
+
+lightning – lightening
+
+argument – arguement
+
+height – heighth
+
+fourth – fourthe
+
+until – untill
+
+entrance – enterance
+
+hindrance – hinderance
+
+boundary – boundery
+
+disaster – disasterous
+
+laundry – laundery
+
+monstrous – monsterous
+
+umbrella – umberella
+
+sandwich – sandwitch
+
+address – addres
+
+business – bussiness
+
+necessary – neccessary
+
+possession – possesssion
+
+tomorrow – tommorrow
+
+fulfill – fullfill
+
+control – controll
+
+useful – usefull
+
+writing – writting
+
+original – orriginal
+
+process – proccess
+
+professor – proffessor
+
+apartment – appartment
+
+amount – ammount
+
+around – arround
+
+balance – ballance
+
+coming – comming
+
+finally – finnally
+
+grateful – greatfull
+
+image – immage
+
+later – lattere
+
+manual – mannuall
+
+memory – memmory
+
+novel – novvell
+
+operator – opperator
+
+parallel – parrallel
+
+planet – plannet
+
+position – possition
+
+program – programm
+
+quality – quallity
+
+report – repport
+
+special – speccial
+
+standard – stanndard
+
+6. Missing Letters (Hiányzó betűk)
+
+Amikor "lenyelünk" néma betűket vagy fontos karaktereket.
+
+coolly – cooly
+
+woolly – wooly
+
+incidentally – incidently
+
+liaison – liason
+
+prerogative – perogative
+
+rhythm – rythm
+
+government – goverment
+
+library – libary
+
+February – Febuary
+
+surprise – suprise
+
+environment – enviroment
+
+sandwich – sanwich
+
+chocolate – choclate
+
+candidate – canidate
+
+arctic – artic
+
+separate – seprate
+
+argument – argment
+
+beginning – begining
+
+calendar – calander
+
+definite – defnite
+
+equipment – equiptment
+
+fascinate – fasinate
+
+foreign – forein
+
+guarantee – gaurantee
+
+hierarchy – hierachy
+
+immediate – imediate
+
+jewelry – jewlery
+
+knowledge – knowlege
+
+maintenance – maintainance
+
+original – orginal
+
+parallel – paralell
+
+physical – phisical
+
+possession – posesion
+
+pronunciation – pronounciation
+
+receipt – receit
+
+recommend – recomend
+
+reference – refernce
+
+restaurant – resturant
+
+separate – seperate
+
+strength – strenth
+
+success – sucess
+
+tomorrow – tomorow
+
+twelfth – twelth
+
+vacuum – vacum
+
+whether – wether
+
+length – lenth
+
+address – adress
+
+daughter – dauter
+
+special – specl
+
+together – together (hiba: togather)
+
+7. Morphological & Visual Confusion (Alaktani és vizuális zavar - Nem szavak)
+
+Olyan elírások, amik hasonlítanak más szavakra, de önmagukban nem léteznek.
+
+foreword – forworde
+
+cite – ciet
+
+their – thier
+
+its – ites
+
+whose – whoose
+
+your – youre (ha nincs aposztróf, de nem 'pure' típus)
+
+affect – affact
+
+stationery – stationarey
+
+stationary – stationarry
+
+complement – complament
+
+weather – wheather
+
+allowed – allowd
+
+capital – capitall
+
+coarse – coarce
+
+dual – duall
+
+elicit – ellicit
+
+ensure – insurre
+
+forth – fourthe
+
+hangar – hangerre
+
+hear – heare
+
+knight – knite
+
+lead – leede
+
+lessen – lessun
+
+mail – maill
+
+morning – morneing
+
+pail – paill
+
+plain – plaine
+
+pray – praey
+
+quiet – quiete
+
+root – roote
+
+sail – saile
+
+sea – seea
+
+steal – steale
+
+tail – taile
+
+waist – waiste
+
+aloud – aloude
+
+principle – principall
+
+desert – desserte
+
+lesson – lessone
+
+night – nite (szleng, de elírásként kezelhető)
+
+through – thruu
+
+believe – beleive (Vizuális hiba)
+
+weight – wieght
+
+receive – receve
+
+beautiful – beatifull
+
+successful – sucessful
+
+business – buisness
+
+accommodate – acommodate
+
+definitely – definately
+
+queue – queu

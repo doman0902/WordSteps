@@ -9,6 +9,13 @@ from fastapi import Depends
 from sqlalchemy.orm import DeclarativeBase 
 from contextlib import asynccontextmanager
 import pandas as pd
+import os
+import numpy as np
+# --- 1. ML IMPORT ÉS KONFIGURÁCIÓ ---
+# Kikapcsoljuk a felesleges TensorFlow naplózást
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+import tensorflow as tf
+
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./words.db"
 
@@ -32,94 +39,126 @@ class QuizWordResponse(BaseModel):
     correct: str
     options: List[str]
 
-def swap_vowel(word):
-    """Felcserél egy véletlenszerű magánhangzót egy másikra."""
-    vowels = 'aeiou'
-    vowel_indices = [i for i, char in enumerate(word) if char in vowels]
-    if not vowel_indices:
-        return word
+# --- 2. ML GLOBÁLIS VÁLTOZÓK ---
+ml_model = None
+ml_metadata = None
+encoder_model = None
+decoder_model = None
+valid_words_cache = set() # A létező szavak gyors ellenőrzéséhez (Collision check)
 
-    idx_to_swap = random.choice(vowel_indices)
-    original_vowel = word[idx_to_swap]
-    new_vowel = random.choice([v for v in vowels if v != original_vowel])
-    return word[:idx_to_swap] + new_vowel + word[idx_to_swap+1:]
-
-def omit_double_letter(word):
-    """Elhagy egyet egy dupla mássalhangzóból (pl. address -> adres)."""
-    for i in range(len(word) - 1):
-        if word[i] == word[i+1] and word[i] not in 'aeiou':
-            return word[:i] + word[i+1:]
-    return word
-
-def transpose_letters(word):
-    """Felcserél két szomszédos betűt (pl. friend -> freind)."""
-    if len(word) < 2:
-        return word
-    idx = random.randint(0, len(word) - 2)
-    return word[:idx] + word[idx+1] + word[idx] + word[idx+2:]
-
-def swap_phonetic(word):
-    """Fonetikus cserét végez (pl. ph -> f)."""
-    if 'ph' in word:
-        return word.replace('ph', 'f', 1)
-    return word
-
-transformation_strategies = [swap_vowel, omit_double_letter, transpose_letters, swap_phonetic]
-
-def generate_smart_distractors(correct_word: str) -> List[str]:
-    """
-    Generál 2 db egyedi, "okos" disztraktort a megadott stratégiák alapján.
-    """
-    distractors = set()
+# --- 3. ML INFERENCIA (JÓSLÁS) LOGIKA ---
+def setup_inference_models():
+    """Rekonstruálja az encoder és decoder modelleket a betöltött h5 fájlból."""
+    global ml_model, ml_metadata, encoder_model, decoder_model
+    latent_dim = 256
     
-    attempts = 0
-    while len(distractors) < 2 and attempts < 10:
-        strategy = random.choice(transformation_strategies)
-        new_word = strategy(correct_word)
-        
-        if new_word != correct_word and new_word not in distractors:
-            distractors.add(new_word)
-        attempts += 1
-        
-    while len(distractors) < 2:
-        distractors.add(correct_word + random.choice(['a', 'x', 'z']))
+    # Encoder modell leválasztása
+    encoder_inputs = ml_model.input[0] 
+    _, state_h_enc, state_c_enc = ml_model.layers[4].output 
+    encoder_states = [state_h_enc, state_c_enc]
+    encoder_model = tf.keras.Model(encoder_inputs, encoder_states)
 
-    return list(distractors)
+    # Decoder modell leválasztása az önálló generáláshoz
+    decoder_inputs = ml_model.input[1] 
+    decoder_state_input_h = tf.keras.Input(shape=(latent_dim,))
+    decoder_state_input_c = tf.keras.Input(shape=(latent_dim,))
+    decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c]
+    
+    decoder_lstm = ml_model.layers[5]
+    decoder_embedding = ml_model.layers[3]
+    
+    decoder_outputs, state_h_dec, state_c_dec = decoder_lstm(
+        decoder_embedding(decoder_inputs), initial_state=decoder_states_inputs
+    )
+    decoder_states = [state_h_dec, state_c_dec]
+    decoder_dense = ml_model.layers[6]
+    decoder_outputs = decoder_dense(decoder_outputs)
+    
+    decoder_model = tf.keras.Model(
+        [decoder_inputs] + decoder_states_inputs,
+        [decoder_outputs] + decoder_states
+    )
+
+def predict_misspelling(input_str):
+    """Az MI modell segítségével generál egy elírást a bemeneti szóból."""
+    if encoder_model is None or decoder_model is None:
+        return None
+
+    try:
+        # Vektorizálás: a szót számokká alakítjuk
+        input_seq = np.zeros((1, ml_metadata['max_encoder_seq_length']), dtype='float32')
+        for t, char in enumerate(input_str.lower()):
+            if char in ml_metadata['char_to_int']:
+                input_seq[0, t] = ml_metadata['char_to_int'][char]
+
+        # Állapotok kódolása az Encoderrel
+        states_value = encoder_model.predict(input_seq, verbose=0)
+
+        # Decoder indítása a start tokennel (\t)
+        target_seq = np.zeros((1, 1))
+        target_seq[0, 0] = ml_metadata['char_to_int']['\t']
+
+        stop_condition = False
+        decoded_sentence = ""
+        
+        while not stop_condition:
+            output_tokens, h, c = decoder_model.predict([target_seq] + states_value, verbose=0)
+            sampled_token_index = np.argmax(output_tokens[0, -1, :])
+            sampled_char = ml_metadata['int_to_char'][sampled_token_index]
+            
+            if sampled_char == '\n' or len(decoded_sentence) > ml_metadata['max_decoder_seq_length']:
+                stop_condition = True
+            else:
+                decoded_sentence += sampled_char
+
+            target_seq = np.zeros((1, 1))
+            target_seq[0, 0] = sampled_token_index
+            states_value = [h, c]
+
+        return decoded_sentence.strip()
+    except Exception:
+        return None
+
 
 @asynccontextmanager
 async def lifespan(app: fastapi.FastAPI):
-    print("Szerver indul, adatbázis ellenőrzése...")
-    Base.metadata.create_all(bind=engine)
+    global ml_model, ml_metadata, valid_words_cache
+    print("Szerver indul, adatbázis és MI ellenőrzése...")
     
+    # MI Modell és Metaadatok betöltése
+    try:
+        if os.path.exists('spelling_model.h5') and os.path.exists('model_metadata.pkl'):
+            ml_model = tf.keras.models.load_model('spelling_model.h5')
+            with open('model_metadata.pkl', 'rb') as f:
+                ml_metadata = pickle.load(f)
+            setup_inference_models()
+            print("MI modell sikeresen betöltve!")
+        else:
+            print("FIGYELEM: MI modell fájlok nem találhatók. Szabályalapú mód aktív.")
+    except Exception as e:
+        print(f"HIBA az MI modell betöltésekor: {e}")
+
+
+    Base.metadata.create_all(bind=engine)  
     db = SessionLocal()
     try:
-        count = db.query(DbWord).count()
-        if count == 0:
+        if db.query(DbWord).count() == 0:
             print("Adatbázis üres, feltöltés (seeding) indul...")
-            try:
-                df = pd.read_csv('b2_words.csv',sep=';',encoding='latin1')
-                print(f"Beolvasva {len(df)} szó a CSV fájlból.")
-
-                words_from_csv = df['word'].tolist()
-                new_words_to_db = []
-
-                for word in words_from_csv:
-                    new_words_to_db.append(DbWord(correct=str(word).lower(), cefr_level="B2"))
-
-                db.add_all(new_words_to_db)
+            csv_file = 'b2_words_cleaned.csv'
+            if os.path.exists(csv_file):
+                # A korábbi hibák alapján: pontosvessző elválasztó és latin1 kódolás
+                df = pd.read_csv(csv_file, sep=';', encoding='latin1')
+                # Tisztítás és duplikátum szűrés
+                clean_words = df['word'].str.lower().str.strip().drop_duplicates().tolist()
+                db.add_all([DbWord(correct=w, cefr_level="B2") for w in clean_words if len(str(w)) > 2])
                 db.commit()
-                print(f"Adatbázis feltöltve {len(new_words_to_db)} szóval.")
+                print(f"Adatbázis feltöltve {len(clean_words)} egyedi szóval.")
+        
+        # Validációs Cache feltöltése a Collision Checkhez
+        all_words = db.query(DbWord.correct).all()
+        valid_words_cache = {w[0] for w in all_words}
+        print(f"Validációs szótár kész: {len(valid_words_cache)} szó.")
 
-            except FileNotFoundError:
-                print(f"HIBA: A '{'b2_words.csv'}' fájl nem található! Az adatbázis üres marad.")
-                print("Kérlek, töltsd le a CSV-t és mentsd az app.py mellé.")
-            except KeyError:
-                print(f"HIBA: Nem található 'word' oszlop a '{'b2_words.csv'}'-ban.")
-            except Exception as e:
-                print(f"HIBA a CSV beolvasása vagy adatbázisba írása közben: {e}")
-            
-        else:
-            print(f"Adatbázis már tartalmazza  a {count} szót.")
     finally:
         db.close()
     print("Szerver készen áll a fogadásra...")
@@ -143,24 +182,41 @@ async def test_endpoint():
 
 @app.get("/quiz_word", response_model=QuizWordResponse)
 def get_quiz_word(db: Session=Depends(get_db)):
-    random_word_from_db = db.query(DbWord).order_by(func.random()).first()
+     # Véletlenszerű helyes szó lekérése
+    while True:
 
-    if not random_word_from_db:
-        raise fastapi.HTTPException(status_code=404, detail="Nincsenek szavak az adatbázisban")
+        row = db.query(DbWord).order_by(func.random()).first()
+        if not row:
+            raise fastapi.HTTPException(status_code=404, detail="Nincsenek szavak az adatbázisban")
 
-    correct=random_word_from_db.correct
-    distractors=generate_smart_distractors(correct)
-    options=[correct]+distractors
-    random.shuffle(options)
-
-    response_data = QuizWordResponse(
-        id=random_word_from_db.id,
-        correct=random_word_from_db.correct,
-        cefr_level=random_word_from_db.cefr_level,
-        options=options
-    )
-    print("Kvíz szó küldve:", response_data.correct)
-    return response_data
+        correct = row.correct
+        distractors = set()
+            
+        # Megpróbálunk 15-ször generálni (hogy meglegyen a 3 egyedi elírás)
+        for _ in range(15):
+            mi_dist = predict_misspelling(correct)
+            # Feltételek: nem None, nem azonos a jóval, nem volt még, és NEM létező szó
+            if mi_dist and mi_dist != correct and mi_dist not in distractors:
+                if mi_dist not in valid_words_cache:
+                    distractors.add(mi_dist)
+            
+            if len(distractors) >= 3:
+                break
+        
+        # Ha sikerült 3-at generálni, megvagyunk!
+        if len(distractors) >= 3:
+            options = list(distractors) + [correct]
+            random.shuffle(options)
+            print(f"Sikeres generálás a '{correct}' szóra.")
+            return QuizWordResponse(
+                id=row.id,
+                correct=correct,
+                cefr_level=row.cefr_level,
+                options=options
+            )
+        
+        # Ha nem sikerült 3-at generálni, a ciklus újraindul egy másik véletlen szóval
+        print(f"A '{correct}' szó elvetve (MI nem tudott 3 érvényes elírást). Új szó sorsolása...")
 
 if __name__ == "__main__":
     print("Teszt indul a http://localhost:8000/test címen...")
