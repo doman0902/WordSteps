@@ -4,155 +4,118 @@ import com.example.wordsteps.data.api.MLApiService
 import com.example.wordsteps.data.database.*
 import com.example.wordsteps.data.models.*
 
-/**
- * Main repository - coordinates database, ML API, and dataset
- */
 class SpellRepository(
     private val database: SpellDatabase,
     private val mlApi: MLApiService,
     private val datasetLoader: DatasetLoader
 ) {
-
     private val attemptDao = database.attemptDao()
-    private val statsDao = database.statsDao()
+    private val statsDao   = database.statsDao()
     private val patternDao = database.patternMasteryDao()
 
-    // ========================================================================
-    // QUIZ GENERATION
-    // ========================================================================
+    // ── Quiz generation ───────────────────────────────────────────────────────
 
-    /**
-     * Generate a quiz question with 4 options (1 correct + 3 wrong)
-     */
     fun generateQuizQuestion(wordQuestion: WordQuestion): QuizQuestion {
         val options = mutableListOf(wordQuestion.correctSpelling)
         options.addAll(wordQuestion.misspellings.map { it.text }.take(3))
         options.shuffle()
-
         return QuizQuestion(
-            correctWord = wordQuestion.correctSpelling,
-            options = options,
+            correctWord  = wordQuestion.correctSpelling,
+            options      = options,
             correctIndex = options.indexOf(wordQuestion.correctSpelling)
         )
     }
 
-    /**
-     * Get questions for practice mode
-     */
-    fun getPracticeQuestions(count: Int = 10): List<QuizQuestion> {
-        val words = datasetLoader.getRandomWords(count)
-        return words.map { generateQuizQuestion(it) }
-    }
+    fun getPracticeQuestions(count: Int = 10): List<QuizQuestion> =
+        datasetLoader.getRandomWords(count).map { generateQuizQuestion(it) }
 
-    /**
-     * Get questions targeting user's weak pattern
-     */
     suspend fun getAdaptiveQuestions(count: Int = 10): List<QuizQuestion> {
         val weakPattern = patternDao.getWeakestPattern()?.pattern
-
         return if (weakPattern != null) {
-            val words = datasetLoader.getWordsByPattern(weakPattern, count)
-            words.map { generateQuizQuestion(it) }
+            datasetLoader.getWordsByPattern(weakPattern, count).map { generateQuizQuestion(it) }
         } else {
             getPracticeQuestions(count)
         }
     }
 
-    // ========================================================================
-    // ANSWER CHECKING & TRACKING
-    // ========================================================================
+    // ── Answer checking & tracking ────────────────────────────────────────────
 
-    /**
-     * Check user's answer and record it
-     */
+    // Pattern resolution:
+    //  - Correct answers  -> CSV lookup (fast, always available)
+    //  - Incorrect answers -> ML API, fallback to CSV if API unavailable
     suspend fun checkAnswer(
         correctWord: String,
         userAnswer: String,
         isCorrect: Boolean
     ) {
-        // Record attempt
-        val mistakePattern = if (!isCorrect) {
+        val pattern: String? = if (isCorrect) {
+            datasetLoader.getPrimaryPattern(correctWord)
+        } else {
             mlApi.predictPattern(correctWord, userAnswer)?.pattern
-        } else null
+                ?: datasetLoader.getPrimaryPattern(correctWord)
+        }
 
-        val attempt = Attempt(
-            correctWord = correctWord,
-            userAnswer = userAnswer,
-            isCorrect = isCorrect,
-            mistakePattern = mistakePattern
+        attemptDao.insertAttempt(
+            Attempt(
+                correctWord    = correctWord,
+                userAnswer     = userAnswer,
+                isCorrect      = isCorrect,
+                mistakePattern = if (!isCorrect) pattern else null
+            )
         )
-        attemptDao.insertAttempt(attempt)
 
-        // Update stats
         updateUserStats(isCorrect)
 
-        // Update pattern mastery if wrong
-        if (!isCorrect && mistakePattern != null) {
-            updatePatternMastery(mistakePattern, isCorrect = false)
+        if (pattern != null) {
+            updatePatternMastery(pattern, isCorrect)
         }
     }
 
     private suspend fun updateUserStats(isCorrect: Boolean) {
         val stats = statsDao.getStats() ?: UserStats()
-
-        val newStats = stats.copy(
-            totalAttempts = stats.totalAttempts + 1,
-            correctAttempts = if (isCorrect) stats.correctAttempts + 1 else stats.correctAttempts,
-            currentStreak = if (isCorrect) stats.currentStreak + 1 else 0,
-            bestStreak = maxOf(stats.bestStreak, if (isCorrect) stats.currentStreak + 1 else 0),
-            lastPracticeDate = System.currentTimeMillis()
+        statsDao.updateStats(
+            stats.copy(
+                totalAttempts    = stats.totalAttempts + 1,
+                correctAttempts  = if (isCorrect) stats.correctAttempts + 1 else stats.correctAttempts,
+                currentStreak    = if (isCorrect) stats.currentStreak + 1 else 0,
+                bestStreak       = maxOf(
+                    stats.bestStreak,
+                    if (isCorrect) stats.currentStreak + 1 else stats.bestStreak
+                ),
+                lastPracticeDate = System.currentTimeMillis()
+            )
         )
-
-        statsDao.updateStats(newStats)
     }
 
     private suspend fun updatePatternMastery(pattern: String, isCorrect: Boolean) {
         val current = patternDao.getPattern(pattern) ?: PatternMastery(pattern = pattern)
-
-        val updated = current.copy(
-            totalAttempts = current.totalAttempts + 1,
-            correctAttempts = if (isCorrect) current.correctAttempts + 1 else current.correctAttempts,
-            lastPracticed = System.currentTimeMillis()
+        patternDao.updatePattern(
+            current.copy(
+                totalAttempts   = current.totalAttempts + 1,
+                correctAttempts = if (isCorrect) current.correctAttempts + 1 else current.correctAttempts,
+                lastPracticed   = System.currentTimeMillis()
+            )
         )
-
-        patternDao.updatePattern(updated)
     }
 
-    // ========================================================================
-    // ANALYTICS & INSIGHTS
-    // ========================================================================
+    // ── Analytics ─────────────────────────────────────────────────────────────
 
-    /**
-     * Analyze user's weak pattern from recent mistakes
-     */
     suspend fun analyzeWeakPattern(): WeakPatternAnalysis? {
         val recentMistakes = attemptDao.getRecentMistakes()
         if (recentMistakes.size < 5) return null
-
-        val mistakes = recentMistakes.map { it.correctWord to it.userAnswer }
-        return mlApi.analyzeUserWeakness(mistakes)
+        return mlApi.analyzeUserWeakness(
+            recentMistakes.map { it.correctWord to it.userAnswer }
+        )
     }
 
-    /**
-     * Get all pattern mastery stats
-     */
-    suspend fun getPatternMasteryStats(): List<PatternMastery> {
-        return patternDao.getAllPatterns()
-    }
+    suspend fun getPatternMasteryStats(): List<PatternMastery> =
+        patternDao.getAllPatterns()
 
-    /**
-     * Get overall user stats
-     */
-    suspend fun getUserStats(): UserStats {
-        return statsDao.getStats() ?: UserStats()
-    }
+    suspend fun getUserStats(): UserStats =
+        statsDao.getStats() ?: UserStats()
 
-    /**
-     * Get recent attempts for history
-     */
-    suspend fun getRecentAttempts(): List<Attempt> {
-        return attemptDao.getRecentAttempts()
-    }
+    suspend fun getRecentAttempts(): List<Attempt> =
+        attemptDao.getRecentAttempts()
 }
 
 data class QuizQuestion(

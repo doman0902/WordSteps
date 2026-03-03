@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
  * Service to communicate with Python Flask ML API
  * Make sure Python server is running: python api_server.py
  */
-class MLApiService(private val baseUrl: String = "http://10.0.2.2:5000") {
+class MLApiService(private val baseUrl: String = "http://192.168.0.144:5000") {
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
