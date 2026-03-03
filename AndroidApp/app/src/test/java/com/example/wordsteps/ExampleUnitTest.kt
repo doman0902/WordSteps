@@ -1,4 +1,4 @@
-package com.example.androidapp
+package com.example.wordsteps
 
 import org.junit.Test
 

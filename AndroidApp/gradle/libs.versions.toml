@@ -11,6 +11,7 @@ composeBom = "2024.09.00"
 navigationCommonKtx = "2.9.5"
 navigationRuntimeKtx = "2.9.5"
 navigationCompose = "2.9.5"
+ksp = "2.0.21-1.0.25"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -35,4 +36,4 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-
+google-devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

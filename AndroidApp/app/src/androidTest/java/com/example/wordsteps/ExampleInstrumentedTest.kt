@@ -1,4 +1,4 @@
-package com.example.androidapp
+package com.example.wordsteps
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4

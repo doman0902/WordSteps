@@ -1,225 +1,177 @@
-import fastapi
-import uvicorn
-from pydantic import BaseModel
-from typing import List
-import random
-from sqlalchemy import create_engine, Column, Integer, String, func
-from sqlalchemy.orm import sessionmaker, Session
-from fastapi import Depends
-from sqlalchemy.orm import DeclarativeBase 
-from contextlib import asynccontextmanager
+"""
+SPELLING PATTERN CLASSIFIER API
+Flask server for your Android spelling quiz app
+
+To run:
+    python api_server.py
+
+Your Android app will connect to this to get ML predictions.
+"""
+
+from flask import Flask, request, jsonify
+import pickle
 import pandas as pd
-import os
-import numpy as np
-# --- 1. ML IMPORT ÉS KONFIGURÁCIÓ ---
-# Kikapcsoljuk a felesleges TensorFlow naplózást
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
-import tensorflow as tf
 
+app = Flask(__name__)
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./words.db"
+# Load model at startup
+print("="*60)
+print("LOADING ML MODEL...")
+print("="*60)
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-class Base(DeclarativeBase):
-    pass
+try:
+    with open('pattern_classifier_rf.pkl', 'rb') as f:
+        model = pickle.load(f)
+    with open('feature_names.pkl', 'rb') as f:
+        feature_names = pickle.load(f)
+    print("✅ Model loaded successfully!")
+except Exception as e:
+    print(f"❌ ERROR loading model: {e}")
+    print("Make sure pattern_classifier_rf.pkl and feature_names.pkl are in the same folder!")
+    exit(1)
 
-class DbWord(Base):
-    __tablename__ = "words"
-    id = Column(Integer, primary_key=True, index=True)
-    correct = Column(String, unique=True, index=True)
-    cefr_level = Column(String)
-
-
-class QuizWordResponse(BaseModel):
-    id:int
-    cefr_level: str
-    correct: str
-    options: List[str]
-
-# --- 2. ML GLOBÁLIS VÁLTOZÓK ---
-ml_model = None
-ml_metadata = None
-encoder_model = None
-decoder_model = None
-valid_words_cache = set() # A létező szavak gyors ellenőrzéséhez (Collision check)
-
-# --- 3. ML INFERENCIA (JÓSLÁS) LOGIKA ---
-def setup_inference_models():
-    """Rekonstruálja az encoder és decoder modelleket a betöltött h5 fájlból."""
-    global ml_model, ml_metadata, encoder_model, decoder_model
-    latent_dim = 256
+def extract_features(correct, misspelled):
+    """Extract features from a word pair (same as training)"""
+    features = {}
+    vowels = set('aeiou')
+    consonants = set('bcdfghjklmnpqrstvwxyz')
     
-    # Encoder modell leválasztása
-    encoder_inputs = ml_model.input[0] 
-    _, state_h_enc, state_c_enc = ml_model.layers[4].output 
-    encoder_states = [state_h_enc, state_c_enc]
-    encoder_model = tf.keras.Model(encoder_inputs, encoder_states)
-
-    # Decoder modell leválasztása az önálló generáláshoz
-    decoder_inputs = ml_model.input[1] 
-    decoder_state_input_h = tf.keras.Input(shape=(latent_dim,))
-    decoder_state_input_c = tf.keras.Input(shape=(latent_dim,))
-    decoder_states_inputs = [decoder_state_input_h, decoder_state_input_c]
+    correct = correct.lower()
+    misspelled = misspelled.lower()
     
-    decoder_lstm = ml_model.layers[5]
-    decoder_embedding = ml_model.layers[3]
+    features['word_length'] = len(correct)
+    features['length_diff'] = len(misspelled) - len(correct)
+    features['length_same'] = 1 if len(correct) == len(misspelled) else 0
+    features['length_shorter'] = 1 if len(misspelled) < len(correct) else 0
+    features['length_longer'] = 1 if len(misspelled) > len(correct) else 0
     
-    decoder_outputs, state_h_dec, state_c_dec = decoder_lstm(
-        decoder_embedding(decoder_inputs), initial_state=decoder_states_inputs
-    )
-    decoder_states = [state_h_dec, state_c_dec]
-    decoder_dense = ml_model.layers[6]
-    decoder_outputs = decoder_dense(decoder_outputs)
+    correct_vowels = sum(1 for c in correct if c in vowels)
+    misspelled_vowels = sum(1 for c in misspelled if c in vowels)
+    features['vowel_count_diff'] = misspelled_vowels - correct_vowels
     
-    decoder_model = tf.keras.Model(
-        [decoder_inputs] + decoder_states_inputs,
-        [decoder_outputs] + decoder_states
-    )
-
-def predict_misspelling(input_str):
-    """Az MI modell segítségével generál egy elírást a bemeneti szóból."""
-    if encoder_model is None or decoder_model is None:
-        return None
-
-    try:
-        # Vektorizálás: a szót számokká alakítjuk
-        input_seq = np.zeros((1, ml_metadata['max_encoder_seq_length']), dtype='float32')
-        for t, char in enumerate(input_str.lower()):
-            if char in ml_metadata['char_to_int']:
-                input_seq[0, t] = ml_metadata['char_to_int'][char]
-
-        # Állapotok kódolása az Encoderrel
-        states_value = encoder_model.predict(input_seq, verbose=0)
-
-        # Decoder indítása a start tokennel (\t)
-        target_seq = np.zeros((1, 1))
-        target_seq[0, 0] = ml_metadata['char_to_int']['\t']
-
-        stop_condition = False
-        decoded_sentence = ""
-        
-        while not stop_condition:
-            output_tokens, h, c = decoder_model.predict([target_seq] + states_value, verbose=0)
-            sampled_token_index = np.argmax(output_tokens[0, -1, :])
-            sampled_char = ml_metadata['int_to_char'][sampled_token_index]
+    features['has_ie'] = 1 if 'ie' in correct else 0
+    features['has_ei'] = 1 if 'ei' in correct else 0
+    features['has_double_vowel'] = 1 if any(correct[i] == correct[i+1] and correct[i] in vowels 
+                                             for i in range(len(correct)-1)) else 0
+    features['has_double_consonant'] = 1 if any(correct[i] == correct[i+1] and correct[i] in consonants 
+                                                  for i in range(len(correct)-1)) else 0
+    features['ends_in_y'] = 1 if correct.endswith('y') else 0
+    features['ends_in_e'] = 1 if correct.endswith('e') else 0
+    features['ends_in_tely'] = 1 if correct.endswith('tely') else 0
+    
+    if len(correct) == len(misspelled):
+        diff_positions = [i for i in range(len(correct)) if correct[i] != misspelled[i]]
+        if diff_positions:
+            features['change_at_start'] = 1 if diff_positions[0] < 3 else 0
+            features['change_at_end'] = 1 if diff_positions[-1] > len(correct) - 3 else 0
+            features['change_in_middle'] = 1 if 3 <= diff_positions[0] <= len(correct)-3 else 0
+            features['num_positions_changed'] = len(diff_positions)
             
-            if sampled_char == '\n' or len(decoded_sentence) > ml_metadata['max_decoder_seq_length']:
-                stop_condition = True
+            if len(diff_positions) == 2 and diff_positions[1] - diff_positions[0] == 1:
+                features['adjacent_swap'] = 1
             else:
-                decoded_sentence += sampled_char
-
-            target_seq = np.zeros((1, 1))
-            target_seq[0, 0] = sampled_token_index
-            states_value = [h, c]
-
-        return decoded_sentence.strip()
-    except Exception:
-        return None
-
-
-@asynccontextmanager
-async def lifespan(app: fastapi.FastAPI):
-    global ml_model, ml_metadata, valid_words_cache
-    print("Szerver indul, adatbázis és MI ellenőrzése...")
-    
-    # MI Modell és Metaadatok betöltése
-    try:
-        if os.path.exists('spelling_model.h5') and os.path.exists('model_metadata.pkl'):
-            ml_model = tf.keras.models.load_model('spelling_model.h5')
-            with open('model_metadata.pkl', 'rb') as f:
-                ml_metadata = pickle.load(f)
-            setup_inference_models()
-            print("MI modell sikeresen betöltve!")
+                features['adjacent_swap'] = 0
+                
+            vowel_to_vowel = sum(1 for i in diff_positions 
+                                if correct[i] in vowels and misspelled[i] in vowels)
+            consonant_to_consonant = sum(1 for i in diff_positions 
+                                        if correct[i] in consonants and misspelled[i] in consonants)
+            features['vowel_to_vowel_swap'] = vowel_to_vowel
+            features['consonant_to_consonant_swap'] = consonant_to_consonant
         else:
-            print("FIGYELEM: MI modell fájlok nem találhatók. Szabályalapú mód aktív.")
-    except Exception as e:
-        print(f"HIBA az MI modell betöltésekor: {e}")
-
-
-    Base.metadata.create_all(bind=engine)  
-    db = SessionLocal()
-    try:
-        if db.query(DbWord).count() == 0:
-            print("Adatbázis üres, feltöltés (seeding) indul...")
-            csv_file = 'b2_words_cleaned.csv'
-            if os.path.exists(csv_file):
-                # A korábbi hibák alapján: pontosvessző elválasztó és latin1 kódolás
-                df = pd.read_csv(csv_file, sep=';', encoding='latin1')
-                # Tisztítás és duplikátum szűrés
-                clean_words = df['word'].str.lower().str.strip().drop_duplicates().tolist()
-                db.add_all([DbWord(correct=w, cefr_level="B2") for w in clean_words if len(str(w)) > 2])
-                db.commit()
-                print(f"Adatbázis feltöltve {len(clean_words)} egyedi szóval.")
-        
-        # Validációs Cache feltöltése a Collision Checkhez
-        all_words = db.query(DbWord.correct).all()
-        valid_words_cache = {w[0] for w in all_words}
-        print(f"Validációs szótár kész: {len(valid_words_cache)} szó.")
-
-    finally:
-        db.close()
-    print("Szerver készen áll a fogadásra...")
-    yield 
+            features['change_at_start'] = 0
+            features['change_at_end'] = 0
+            features['change_in_middle'] = 0
+            features['num_positions_changed'] = 0
+            features['adjacent_swap'] = 0
+            features['vowel_to_vowel_swap'] = 0
+            features['consonant_to_consonant_swap'] = 0
+    else:
+        features['change_at_start'] = 0
+        features['change_at_end'] = 0
+        features['change_in_middle'] = 0
+        features['num_positions_changed'] = 0
+        features['adjacent_swap'] = 0
+        features['vowel_to_vowel_swap'] = 0
+        features['consonant_to_consonant_swap'] = 0
     
-    print("Szerver leáll...")
+    features['has_y_and_i'] = 1 if ('y' in correct and 'i' in correct) else 0
+    
+    return features
 
-app = fastapi.FastAPI(lifespan=lifespan)
-
-def get_db():
-    db = SessionLocal()
+@app.route('/predict', methods=['POST'])
+def predict():
+    """Predict the mistake pattern for a single word"""
     try:
-        yield db
-    finally:
-        db.close()
-
-@app.get("/test")
-async def test_endpoint():
-    print("Kotlin hívás beérkezett")
-    return {"message": "Python backend válaszolt"}
-
-@app.get("/quiz_word", response_model=QuizWordResponse)
-def get_quiz_word(db: Session=Depends(get_db)):
-     # Véletlenszerű helyes szó lekérése
-    while True:
-
-        row = db.query(DbWord).order_by(func.random()).first()
-        if not row:
-            raise fastapi.HTTPException(status_code=404, detail="Nincsenek szavak az adatbázisban")
-
-        correct = row.correct
-        distractors = set()
-            
-        # Megpróbálunk 15-ször generálni (hogy meglegyen a 3 egyedi elírás)
-        for _ in range(15):
-            mi_dist = predict_misspelling(correct)
-            # Feltételek: nem None, nem azonos a jóval, nem volt még, és NEM létező szó
-            if mi_dist and mi_dist != correct and mi_dist not in distractors:
-                if mi_dist not in valid_words_cache:
-                    distractors.add(mi_dist)
-            
-            if len(distractors) >= 3:
-                break
+        data = request.get_json()
+        correct = data.get('correct', '').strip()
+        wrong = data.get('wrong', '').strip()
         
-        # Ha sikerült 3-at generálni, megvagyunk!
-        if len(distractors) >= 3:
-            options = list(distractors) + [correct]
-            random.shuffle(options)
-            print(f"Sikeres generálás a '{correct}' szóra.")
-            return QuizWordResponse(
-                id=row.id,
-                correct=correct,
-                cefr_level=row.cefr_level,
-                options=options
-            )
+        if not correct or not wrong:
+            return jsonify({'error': 'Missing correct or wrong parameter'}), 400
         
-        # Ha nem sikerült 3-at generálni, a ciklus újraindul egy másik véletlen szóval
-        print(f"A '{correct}' szó elvetve (MI nem tudott 3 érvényes elírást). Új szó sorsolása...")
+        features = extract_features(correct, wrong)
+        features_df = pd.DataFrame([features])
+        prediction = model.predict(features_df)[0]
+        probabilities = model.predict_proba(features_df)[0]
+        confidence = float(max(probabilities))
+        
+        print(f"✓ {correct} → {wrong} = {prediction} ({confidence:.2f})")
+        
+        return jsonify({
+            'pattern': prediction,
+            'confidence': confidence
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-if __name__ == "__main__":
-    print("Teszt indul a http://localhost:8000/test címen...")
-    print("Adatbázis fájl: words.db")
-    print("Kvíz szó elérhető a http://localhost:8000/quiz_word címen...")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+@app.route('/analyze_user', methods=['POST'])
+def analyze_user():
+    """Analyze multiple mistakes to find weak pattern"""
+    try:
+        data = request.get_json()
+        mistakes = data.get('mistakes', [])
+        
+        if not mistakes:
+            return jsonify({'error': 'No mistakes provided'}), 400
+        
+        predictions = []
+        for mistake in mistakes:
+            correct = mistake.get('correct', '').strip()
+            wrong = mistake.get('wrong', '').strip()
+            if correct and wrong:
+                features = extract_features(correct, wrong)
+                features_df = pd.DataFrame([features])
+                pred = model.predict(features_df)[0]
+                predictions.append(pred)
+        
+        if not predictions:
+            return jsonify({'error': 'No valid mistakes'}), 400
+        
+        from collections import Counter
+        pattern_counts = Counter(predictions)
+        weak_pattern = pattern_counts.most_common(1)[0][0]
+        
+        print(f"✓ Analyzed {len(predictions)} mistakes → {weak_pattern}")
+        
+        return jsonify({
+            'weak_pattern': weak_pattern,
+            'pattern_counts': dict(pattern_counts)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/health', methods=['GET'])
+def health():
+    """Health check"""
+    return jsonify({'status': 'ok'})
+
+if __name__ == '__main__':
+    print("\n" + "="*60)
+    print("SPELLING PATTERN API - RUNNING")
+    print("="*60)
+    print("\n✓ http://localhost:5000")
+    print("✓ Android emulator: http://10.0.2.2:5000")
+    print("\nPress Ctrl+C to stop\n")
+    
+    app.run(host='0.0.0.0', port=5000, debug=True)
