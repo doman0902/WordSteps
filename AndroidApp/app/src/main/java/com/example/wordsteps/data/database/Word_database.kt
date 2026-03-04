@@ -16,7 +16,7 @@ interface AttemptDao {
     suspend fun insertAttempt(attempt: Attempt)
 
     @Query("DELETE FROM attempts")
-    suspend fun clearAll()
+    suspend fun deleteAll()
 }
 
 @Dao
@@ -29,6 +29,9 @@ interface StatsDao {
 
     @Query("UPDATE stats SET currentStreak = 0 WHERE id = 1")
     suspend fun resetStreak()
+
+    @Query("DELETE FROM stats")
+    suspend fun deleteAll()
 }
 
 @Dao
@@ -44,6 +47,9 @@ interface PatternMasteryDao {
 
     @Query("SELECT * FROM pattern_mastery ORDER BY CAST(correctAttempts AS REAL) / totalAttempts ASC LIMIT 1")
     suspend fun getWeakestPattern(): PatternMastery?
+
+    @Query("DELETE FROM pattern_mastery")
+    suspend fun deleteAll()
 }
 
 @Database(

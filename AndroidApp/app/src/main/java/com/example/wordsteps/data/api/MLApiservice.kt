@@ -1,7 +1,9 @@
 package com.example.wordsteps.data.api
 
 import com.example.wordsteps.data.models.*
+import com.example.wordsteps.data.preferences.UserPreferences
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -15,12 +17,17 @@ import java.util.concurrent.TimeUnit
  * Service to communicate with Python Flask ML API
  * Make sure Python server is running: python api_server.py
  */
-class MLApiService(private val baseUrl: String = "http://192.168.0.144:5000") {
+class MLApiService(private val prefs: UserPreferences) {
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
         .build()
+
+    private suspend fun baseUrl(): String {
+        val ip = prefs.serverIpFlow.first()
+        return "http://$ip"
+    }
 
     /**
      * Predict the mistake pattern for a single word
@@ -35,7 +42,7 @@ class MLApiService(private val baseUrl: String = "http://192.168.0.144:5000") {
 
                 val body = json.toString().toRequestBody("application/json".toMediaType())
                 val request = Request.Builder()
-                    .url("$baseUrl/predict")
+                    .url("${baseUrl()}/predict")
                     .post(body)
                     .build()
 
@@ -43,12 +50,10 @@ class MLApiService(private val baseUrl: String = "http://192.168.0.144:5000") {
                     if (response.isSuccessful) {
                         val result = JSONObject(response.body!!.string())
                         PatternPrediction(
-                            pattern = result.getString("pattern"),
+                            pattern    = result.getString("pattern"),
                             confidence = result.getDouble("confidence")
                         )
-                    } else {
-                        null
-                    }
+                    } else null
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -71,13 +76,12 @@ class MLApiService(private val baseUrl: String = "http://192.168.0.144:5000") {
                     })
                 }
 
-                val json = JSONObject().apply {
+                val body = JSONObject().apply {
                     put("mistakes", mistakesArray)
-                }
+                }.toString().toRequestBody("application/json".toMediaType())
 
-                val body = json.toString().toRequestBody("application/json".toMediaType())
                 val request = Request.Builder()
-                    .url("$baseUrl/analyze_user")
+                    .url("${baseUrl()}/analyze_user")
                     .post(body)
                     .build()
 
@@ -89,15 +93,12 @@ class MLApiService(private val baseUrl: String = "http://192.168.0.144:5000") {
                         countsJson.keys().forEach { key ->
                             patternCounts[key] = countsJson.getInt(key)
                         }
-
                         WeakPatternAnalysis(
                             weakestPattern = result.getString("weak_pattern"),
-                            patternCounts = patternCounts,
-                            accuracy = 0f  // Calculate from attempts
+                            patternCounts  = patternCounts,
+                            accuracy       = 0f
                         )
-                    } else {
-                        null
-                    }
+                    } else null
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

@@ -8,13 +8,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.geometry.RoundRect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.wordsteps.data.api.MLApiService
 import com.example.wordsteps.data.database.SpellDatabase
+import com.example.wordsteps.data.preferences.UserPreferences
 import com.example.wordsteps.data.repository.DatasetLoader
 import com.example.wordsteps.data.repository.SpellRepository
 import com.example.wordsteps.ui.home.HomeScreen
@@ -24,6 +24,9 @@ import com.example.wordsteps.ui.practice.PracticeMode
 import com.example.wordsteps.ui.practice.PracticeScreen
 import com.example.wordsteps.ui.practice.PracticeViewModel
 import com.example.wordsteps.ui.practice.PracticeViewModelFactory
+import com.example.wordsteps.ui.settings.SettingsScreen
+import com.example.wordsteps.ui.settings.SettingsViewModel
+import com.example.wordsteps.ui.settings.SettingsViewModelFactory
 import com.example.wordsteps.ui.stats.StatsScreen
 import com.example.wordsteps.ui.stats.StatsViewModel
 import com.example.wordsteps.ui.stats.StatsViewModelFactory
@@ -37,23 +40,24 @@ object Routes {
     const val PRACTICE = "practice"
     const val ADAPTIVE = "adaptive"
     const val STATS    = "stats"
-
-    const val TYPING = "typing"
+    const val TYPING   = "typing"
+    const val SETTINGS = "settings"
 }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val prefs      = UserPreferences(applicationContext)
         val database   = SpellDatabase.getDatabase(applicationContext)
-        val mlApi      = MLApiService()
+        val mlApi      = MLApiService(prefs)
         val loader     = DatasetLoader(applicationContext).also { it.loadDataset() }
         val repository = SpellRepository(database, mlApi, loader)
 
         setContent {
             WordStepsTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {
-                    WordStepsApp(repository,applicationContext)
+                    WordStepsApp(repository, applicationContext, prefs, database)
                 }
             }
         }
@@ -61,7 +65,12 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun WordStepsApp(repository: SpellRepository,appContext: Context) {
+fun WordStepsApp(
+    repository: SpellRepository,
+    appContext: Context,
+    prefs: UserPreferences,
+    database: SpellDatabase
+) {
     val navController = rememberNavController()
 
     NavHost(navController = navController, startDestination = Routes.HOME) {
@@ -72,8 +81,9 @@ fun WordStepsApp(repository: SpellRepository,appContext: Context) {
                 viewModel       = vm,
                 onStartPractice = { navController.navigate(Routes.PRACTICE) },
                 onStartAdaptive = { navController.navigate(Routes.ADAPTIVE) },
-                onOpenStats     = { navController.navigate(Routes.STATS)},
-                onStartTyping = {navController.navigate(Routes.TYPING)}
+                onOpenStats     = { navController.navigate(Routes.STATS) },
+                onStartTyping   = { navController.navigate(Routes.TYPING) },
+                onOpenSettings  = { navController.navigate(Routes.SETTINGS) }
             )
         }
 
@@ -82,7 +92,6 @@ fun WordStepsApp(repository: SpellRepository,appContext: Context) {
                 viewModelStoreOwner = backStackEntry,
                 factory = PracticeViewModelFactory(repository)
             )
-            // init already calls NORMAL mode, nothing extra needed
             PracticeScreen(
                 viewModel      = vm,
                 onNavigateBack = { navController.popBackStack() }
@@ -94,7 +103,6 @@ fun WordStepsApp(repository: SpellRepository,appContext: Context) {
                 viewModelStoreOwner = backStackEntry,
                 factory = PracticeViewModelFactory(repository)
             )
-            // Trigger adaptive mode once when first composed
             LaunchedEffect(Unit) {
                 vm.loadQuestions(PracticeMode.ADAPTIVE)
             }
@@ -118,6 +126,16 @@ fun WordStepsApp(repository: SpellRepository,appContext: Context) {
                 factory = TypingViewModelFactory(repository, appContext)
             )
             TypingScreen(
+                viewModel      = vm,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.SETTINGS) {
+            val vm: SettingsViewModel = viewModel(
+                factory = SettingsViewModelFactory(prefs, database)
+            )
+            SettingsScreen(
                 viewModel      = vm,
                 onNavigateBack = { navController.popBackStack() }
             )

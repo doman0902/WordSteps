@@ -13,8 +13,6 @@ class SpellRepository(
     private val statsDao   = database.statsDao()
     private val patternDao = database.patternMasteryDao()
 
-    // ── Quiz generation ───────────────────────────────────────────────────────
-
     fun generateQuizQuestion(wordQuestion: WordQuestion): QuizQuestion {
         val options = mutableListOf(wordQuestion.correctSpelling)
         options.addAll(wordQuestion.misspellings.map { it.text }.take(3))
@@ -29,6 +27,9 @@ class SpellRepository(
     fun getPracticeQuestions(count: Int = 10): List<QuizQuestion> =
         datasetLoader.getRandomWords(count).map { generateQuizQuestion(it) }
 
+    fun getPatternFast(correctWord: String): String? =
+        datasetLoader.getPrimaryPattern(correctWord)
+
     suspend fun getAdaptiveQuestions(count: Int = 10): List<QuizQuestion> {
         val weakPattern = patternDao.getWeakestPattern()?.pattern
         return if (weakPattern != null) {
@@ -38,16 +39,12 @@ class SpellRepository(
         }
     }
 
-    // ── Answer checking & tracking ────────────────────────────────────────────
-
-    // Pattern resolution:
-    //  - Correct answers  -> CSV lookup (fast, always available)
-    //  - Incorrect answers -> ML API, fallback to CSV if API unavailable
+    // Returns the resolved pattern so callers can use it for session summaries
     suspend fun checkAnswer(
         correctWord: String,
         userAnswer: String,
         isCorrect: Boolean
-    ) {
+    ): String? {
         val pattern: String? = if (isCorrect) {
             datasetLoader.getPrimaryPattern(correctWord)
         } else {
@@ -65,10 +62,9 @@ class SpellRepository(
         )
 
         updateUserStats(isCorrect)
+        if (pattern != null) updatePatternMastery(pattern, isCorrect)
 
-        if (pattern != null) {
-            updatePatternMastery(pattern, isCorrect)
-        }
+        return pattern
     }
 
     private suspend fun updateUserStats(isCorrect: Boolean) {
@@ -98,7 +94,9 @@ class SpellRepository(
         )
     }
 
-    // ── Analytics ─────────────────────────────────────────────────────────────
+    suspend fun getPatternMasteryStats(): List<PatternMastery> = patternDao.getAllPatterns()
+    suspend fun getUserStats(): UserStats = statsDao.getStats() ?: UserStats()
+    suspend fun getRecentAttempts(): List<Attempt> = attemptDao.getRecentAttempts()
 
     suspend fun analyzeWeakPattern(): WeakPatternAnalysis? {
         val recentMistakes = attemptDao.getRecentMistakes()
@@ -107,15 +105,6 @@ class SpellRepository(
             recentMistakes.map { it.correctWord to it.userAnswer }
         )
     }
-
-    suspend fun getPatternMasteryStats(): List<PatternMastery> =
-        patternDao.getAllPatterns()
-
-    suspend fun getUserStats(): UserStats =
-        statsDao.getStats() ?: UserStats()
-
-    suspend fun getRecentAttempts(): List<Attempt> =
-        attemptDao.getRecentAttempts()
 }
 
 data class QuizQuestion(

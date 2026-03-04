@@ -6,6 +6,9 @@ import android.speech.tts.UtteranceProgressListener
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.wordsteps.data.models.PatternResult
+import com.example.wordsteps.data.models.SessionSummary
+import com.example.wordsteps.data.models.WrongWord
 import com.example.wordsteps.data.repository.QuizQuestion
 import com.example.wordsteps.data.repository.SpellRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,9 +27,10 @@ sealed class TypingUiState {
     ) : TypingUiState()
     data class Feedback(
         val isCorrect: Boolean, val correctWord: String, val userAnswer: String,
-        val questionNumber: Int, val totalQuestions: Int, val score: Int, val streak: Int
+        val questionNumber: Int, val totalQuestions: Int, val score: Int, val streak: Int,
+        val isLastQuestion: Boolean
     ) : TypingUiState()
-    data class Finished(val score: Int, val total: Int, val accuracy: Int) : TypingUiState()
+    data class Finished(val summary: SessionSummary) : TypingUiState()
 }
 
 class TypingViewModel(private val repository: SpellRepository, private val context: Context) : ViewModel() {
@@ -39,6 +43,9 @@ class TypingViewModel(private val repository: SpellRepository, private val conte
     private var tts: TextToSpeech? = null
     private var lastWordCount = 10
     private var ttsReady = false
+    private val correctWords = mutableListOf<String>()
+    private val wrongWords   = mutableListOf<WrongWord>()
+    private val patternMap   = mutableMapOf<String, PatternResult>()
 
     init { initTts() }
 
@@ -48,12 +55,10 @@ class TypingViewModel(private val repository: SpellRepository, private val conte
                 tts?.language = Locale.UK
                 tts?.setSpeechRate(0.9f)
                 ttsReady = true
-                // refresh UI so the speaker button becomes tappable
                 (_uiState.value as? TypingUiState.Question)?.let {
                     _uiState.value = it.copy(ttsReady = true)
                 }
             } else {
-                // Google TTS failed, fall back to default engine
                 tts = TextToSpeech(context) { fallbackStatus ->
                     if (fallbackStatus == TextToSpeech.SUCCESS) {
                         tts?.language = Locale.UK
@@ -70,6 +75,9 @@ class TypingViewModel(private val repository: SpellRepository, private val conte
 
     fun startSession(wordCount: Int) {
         lastWordCount = wordCount
+        correctWords.clear()
+        wrongWords.clear()
+        patternMap.clear()
         viewModelScope.launch {
             _uiState.value = TypingUiState.Loading
             questions = repository.getPracticeQuestions(wordCount)
@@ -79,14 +87,6 @@ class TypingViewModel(private val repository: SpellRepository, private val conte
     }
 
     private fun showQuestion() {
-        if (currentIndex >= questions.size) {
-            _uiState.value = TypingUiState.Finished(
-                score    = score,
-                total    = questions.size,
-                accuracy = if (questions.isEmpty()) 0 else (score.toFloat() / questions.size * 100).toInt()
-            )
-            return
-        }
         _uiState.value = TypingUiState.Question(
             questionNumber = currentIndex + 1,
             totalQuestions = questions.size,
@@ -128,12 +128,16 @@ class TypingViewModel(private val repository: SpellRepository, private val conte
     }
 
     fun submitAnswer() {
-        val state    = _uiState.value as? TypingUiState.Question ?: return
-        val question = questions[currentIndex]
-        val input    = state.userInput.trim()
+        val state     = _uiState.value as? TypingUiState.Question ?: return
+        val question  = questions[currentIndex]
+        val input     = state.userInput.trim()
         val isCorrect = input.equals(question.correctWord, ignoreCase = true)
+        val isLast    = currentIndex == questions.size - 1
         if (isCorrect) { score++; streak++ } else { streak = 0 }
-        viewModelScope.launch { repository.checkAnswer(question.correctWord, input, isCorrect) }
+
+        if (isCorrect) correctWords.add(question.correctWord)
+
+        // Show feedback immediately — no waiting for network
         _uiState.value = TypingUiState.Feedback(
             isCorrect      = isCorrect,
             correctWord    = question.correctWord,
@@ -141,11 +145,49 @@ class TypingViewModel(private val repository: SpellRepository, private val conte
             questionNumber = state.questionNumber,
             totalQuestions = state.totalQuestions,
             score          = score,
-            streak         = streak
+            streak         = streak,
+            isLastQuestion = isLast
         )
+
+        // checkAnswer calls ML API and returns the real pattern
+        // We use it for both DB logging AND the summary
+        viewModelScope.launch {
+            val pattern = repository.checkAnswer(question.correctWord, input, isCorrect)
+
+            if (!isCorrect) {
+                wrongWords.add(WrongWord(question.correctWord, input, pattern))
+            }
+            if (pattern != null) {
+                val existing = patternMap[pattern] ?: PatternResult(pattern, 0, 0)
+                patternMap[pattern] = existing.copy(
+                    correct = existing.correct + if (isCorrect) 1 else 0,
+                    total   = existing.total + 1
+                )
+            }
+        }
     }
 
-    fun nextQuestion() { currentIndex++; showQuestion() }
+    fun nextQuestion() {
+        if (currentIndex >= questions.size - 1) {
+            // Build summary from whatever the coroutines have written so far
+            // By the time the user reads feedback and taps "See Results"
+            // the API call has almost always finished
+            _uiState.value = TypingUiState.Finished(
+                SessionSummary(
+                    score            = score,
+                    total            = questions.size,
+                    accuracy         = if (questions.isEmpty()) 0 else (score.toFloat() / questions.size * 100).toInt(),
+                    correctWords     = correctWords.toList(),
+                    wrongWords       = wrongWords.toList(),
+                    patternBreakdown = patternMap.values.sortedBy { it.accuracy }
+                )
+            )
+        } else {
+            currentIndex++
+            showQuestion()
+        }
+    }
+
     fun restartSession() { startSession(lastWordCount) }
 
     override fun onCleared() { tts?.stop(); tts?.shutdown(); super.onCleared() }

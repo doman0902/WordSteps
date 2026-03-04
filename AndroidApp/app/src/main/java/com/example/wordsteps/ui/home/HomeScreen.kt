@@ -6,6 +6,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,11 +55,11 @@ fun HomeScreen(
     onStartPractice: () -> Unit,
     onStartAdaptive: () -> Unit,
     onOpenStats: () -> Unit,
-    onStartTyping:() -> Unit
+    onStartTyping: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     val state = viewModel.uiState.collectAsState().value
 
-    // ── FIX: reload stats every time this screen is resumed ─────────────────
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -70,7 +71,6 @@ fun HomeScreen(
 
     Box(modifier = Modifier.fillMaxSize().background(Navy)) {
 
-        // Ambient glow
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawCircle(
                 brush  = Brush.radialGradient(
@@ -93,7 +93,7 @@ fun HomeScreen(
                     .padding(horizontal = 24.dp, vertical = 40.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // ── Header + stats icon ──────────────────────────────────────
+                // ── Header ───────────────────────────────────────────────────
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -105,11 +105,19 @@ fun HomeScreen(
                         Text("Master English spelling patterns",
                             color = TextSecondary, fontSize = 14.sp)
                     }
-                    IconButton(
-                        onClick  = onOpenStats,
-                        modifier = Modifier.size(44.dp).clip(CircleShape).background(NavyLight)
-                    ) {
-                        Icon(Icons.Default.BarChart, contentDescription = "Stats", tint = Amber)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconButton(
+                            onClick  = onOpenStats,
+                            modifier = Modifier.size(44.dp).clip(CircleShape).background(NavyLight)
+                        ) {
+                            Icon(Icons.Default.BarChart, contentDescription = "Stats", tint = Amber)
+                        }
+                        IconButton(
+                            onClick  = onOpenSettings,
+                            modifier = Modifier.size(44.dp).clip(CircleShape).background(NavyLight)
+                        ) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextSecondary)
+                        }
                     }
                 }
 
@@ -146,36 +154,6 @@ fun HomeScreen(
                     PatternMasterySection(state.patternMasteryList)
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun StatsRow(state: HomeUiState) {
-    val stats    = state.stats
-    val accuracy = if (stats.totalAttempts > 0)
-        (stats.correctAttempts.toFloat() / stats.totalAttempts * 100).roundToInt() else 0
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        StatChip(Modifier.weight(1f), "$accuracy%",               "Accuracy", Teal)
-        StatChip(Modifier.weight(1f), "🔥 ${stats.currentStreak}", "Streak",   Amber)
-        StatChip(Modifier.weight(1f), "${stats.totalAttempts}",    "Answered", Rose)
-    }
-}
-
-@Composable
-private fun StatChip(modifier: Modifier, value: String, label: String, color: Color) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(NavyLight)
-            .border(1.dp, color.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-            .padding(vertical = 16.dp, horizontal = 8.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(value, color = color, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            Spacer(Modifier.height(2.dp))
-            Text(label, color = TextSecondary, fontSize = 11.sp)
         }
     }
 }

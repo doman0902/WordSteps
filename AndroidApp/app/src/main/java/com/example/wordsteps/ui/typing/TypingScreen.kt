@@ -27,6 +27,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.wordsteps.ui.summary.SessionSummaryScreen
 
 private val Navy          = Color(0xFF0F1B2D)
 private val NavyLight     = Color(0xFF1A2E4A)
@@ -75,17 +76,17 @@ fun TypingScreen(
                     state  = s,
                     onNext = { viewModel.nextQuestion() }
                 )
-                is TypingUiState.Finished -> FinishedScreen(
-                    state     = s,
-                    onRestart = { viewModel.restartSession() },
-                    onBack    = onNavigateBack
+                is TypingUiState.Finished -> SessionSummaryScreen(
+                    summary     = s.summary,
+                    onPlayAgain = { viewModel.restartSession() },
+                    onHome      = onNavigateBack
                 )
             }
         }
     }
 }
 
-// ── Setup: pick word count ────────────────────────────────────────────────────
+// ── Setup ─────────────────────────────────────────────────────────────────────
 @Composable
 private fun SetupScreen(onStart: (Int) -> Unit) {
     var selected by remember { mutableStateOf(10) }
@@ -165,7 +166,6 @@ private fun QuestionScreen(
 
         Spacer(Modifier.height(56.dp))
 
-        // Speaker button — greyed out until TTS is ready
         Box(
             modifier = Modifier
                 .size(110.dp)
@@ -195,12 +195,9 @@ private fun QuestionScreen(
                     strokeWidth = 2.dp
                 )
             } else {
-                Icon(
-                    Icons.Default.VolumeUp,
-                    contentDescription = "Hear word",
+                Icon(Icons.Default.VolumeUp, contentDescription = "Hear word",
                     tint = if (state.isSpeaking) Purple else TextSecondary,
-                    modifier = Modifier.size(48.dp)
-                )
+                    modifier = Modifier.size(48.dp))
             }
         }
 
@@ -225,35 +222,31 @@ private fun QuestionScreen(
         AnimatedVisibility(visible = state.hasSpoken) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 OutlinedTextField(
-                    value           = state.userInput,
-                    onValueChange   = onInput,
-                    placeholder     = { Text("Type the word...", color = TextSecondary) },
-                    modifier        = Modifier.fillMaxWidth(),
-                    singleLine      = true,
+                    value = state.userInput, onValueChange = onInput,
+                    placeholder = { Text("Type the word...", color = TextSecondary) },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.None,
-                        imeAction      = ImeAction.Done
+                        imeAction = ImeAction.Done
                     ),
                     keyboardActions = KeyboardActions(onDone = {
                         keyboard?.hide()
                         if (state.userInput.isNotBlank()) onSubmit()
                     }),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor   = Purple,
-                        unfocusedBorderColor = NavyLight,
-                        focusedTextColor     = TextPrimary,
-                        unfocusedTextColor   = TextPrimary,
-                        cursorColor          = Purple
+                        focusedBorderColor = Purple, unfocusedBorderColor = NavyLight,
+                        focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary,
+                        cursorColor = Purple
                     ),
                     shape = RoundedCornerShape(14.dp)
                 )
                 Spacer(Modifier.height(16.dp))
                 Button(
-                    onClick  = { keyboard?.hide(); onSubmit() },
-                    enabled  = state.userInput.isNotBlank(),
+                    onClick = { keyboard?.hide(); onSubmit() },
+                    enabled = state.userInput.isNotBlank(),
                     modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape    = RoundedCornerShape(16.dp),
-                    colors   = ButtonDefaults.buttonColors(containerColor = Purple)
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Purple)
                 ) {
                     Text("Submit", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
@@ -273,9 +266,7 @@ private fun FeedbackScreen(state: TypingUiState.Feedback, onNext: () -> Unit) {
         verticalArrangement = Arrangement.Center
     ) {
         Box(
-            modifier = Modifier
-                .size(80.dp)
-                .clip(CircleShape)
+            modifier = Modifier.size(80.dp).clip(CircleShape)
                 .background(color.copy(alpha = 0.12f))
                 .border(2.dp, color.copy(alpha = 0.4f), CircleShape),
             contentAlignment = Alignment.Center
@@ -289,10 +280,8 @@ private fun FeedbackScreen(state: TypingUiState.Feedback, onNext: () -> Unit) {
         Spacer(Modifier.height(28.dp))
 
         Column(
-            modifier = Modifier.fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(NavyLight)
-                .padding(20.dp),
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                .background(NavyLight).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(modifier = Modifier.fillMaxWidth(),
@@ -315,55 +304,13 @@ private fun FeedbackScreen(state: TypingUiState.Feedback, onNext: () -> Unit) {
 
         Spacer(Modifier.height(36.dp))
         Button(
-            onClick  = onNext,
+            onClick = onNext,
             modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape    = RoundedCornerShape(16.dp),
-            colors   = ButtonDefaults.buttonColors(containerColor = Purple)
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Purple)
         ) {
             Text(if (state.questionNumber == state.totalQuestions) "See Results" else "Next Word",
                 color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        }
-    }
-}
-
-// ── Finished ──────────────────────────────────────────────────────────────────
-@Composable
-private fun FinishedScreen(
-    state: TypingUiState.Finished,
-    onRestart: () -> Unit,
-    onBack: () -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text("Session Complete!", color = TextPrimary, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
-        Spacer(Modifier.height(36.dp))
-        Box(
-            modifier = Modifier
-                .size(130.dp)
-                .clip(CircleShape)
-                .background(Brush.radialGradient(listOf(Purple.copy(alpha = 0.18f), Navy)))
-                .border(2.dp, Purple.copy(alpha = 0.3f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("${state.accuracy}%", color = Purple, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
-                Text("accuracy", color = TextSecondary, fontSize = 11.sp)
-            }
-        }
-        Spacer(Modifier.height(20.dp))
-        Text("${state.score} / ${state.total} correct", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-        Spacer(Modifier.height(48.dp))
-        Button(onClick = onRestart, modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = Purple)) {
-            Text("Try Again", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        }
-        Spacer(Modifier.height(12.dp))
-        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, NavyLight)) {
-            Text("Back to Home", color = TextPrimary, fontSize = 16.sp)
         }
     }
 }

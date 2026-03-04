@@ -1,6 +1,5 @@
 package com.example.wordsteps.ui.practice
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -14,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.wordsteps.ui.summary.SessionSummaryScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,10 +41,14 @@ fun PracticeScreen(
                 .padding(padding)
         ) {
             when (val state = uiState) {
-                is PracticeUiState.Loading -> LoadingScreen()
+                is PracticeUiState.Loading  -> LoadingScreen()
                 is PracticeUiState.Question -> QuestionScreen(state, viewModel)
                 is PracticeUiState.Feedback -> FeedbackScreen(state, viewModel)
-                is PracticeUiState.Finished -> FinishedScreen(state, viewModel, onNavigateBack)
+                is PracticeUiState.Finished -> SessionSummaryScreen(
+                    summary     = state.summary,
+                    onPlayAgain = { viewModel.restartQuiz() },
+                    onHome      = { onNavigateBack() }
+                )
             }
         }
     }
@@ -58,7 +62,6 @@ fun QuestionScreen(state: PracticeUiState.Question, viewModel: PracticeViewModel
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Progress
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
@@ -84,7 +87,6 @@ fun QuestionScreen(state: PracticeUiState.Question, viewModel: PracticeViewModel
 
         Spacer(modifier = Modifier.height(48.dp))
 
-        // Question
         Text(
             text = "Which spelling is correct?",
             style = MaterialTheme.typography.headlineSmall,
@@ -92,7 +94,6 @@ fun QuestionScreen(state: PracticeUiState.Question, viewModel: PracticeViewModel
             modifier = Modifier.padding(bottom = 32.dp)
         )
 
-        // Options
         state.question.options.forEachIndexed { index, option ->
             OptionButton(
                 text = option,
@@ -112,7 +113,6 @@ fun FeedbackScreen(state: PracticeUiState.Feedback, viewModel: PracticeViewModel
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Feedback icon
         Text(
             text = if (state.isCorrect) "✓" else "✗",
             fontSize = 120.sp,
@@ -121,7 +121,6 @@ fun FeedbackScreen(state: PracticeUiState.Feedback, viewModel: PracticeViewModel
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Message
         Text(
             text = if (state.isCorrect) "Correct!" else "Incorrect",
             style = MaterialTheme.typography.headlineMedium,
@@ -144,7 +143,6 @@ fun FeedbackScreen(state: PracticeUiState.Feedback, viewModel: PracticeViewModel
 
         Spacer(modifier = Modifier.height(48.dp))
 
-        // Progress
         Text(
             text = "Score: ${state.currentScore}/${state.totalQuestions}",
             style = MaterialTheme.typography.titleMedium
@@ -164,81 +162,6 @@ fun FeedbackScreen(state: PracticeUiState.Feedback, viewModel: PracticeViewModel
 }
 
 @Composable
-fun FinishedScreen(
-    state: PracticeUiState.Finished,
-    viewModel: PracticeViewModel,
-    onNavigateBack: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "🎉",
-            fontSize = 100.sp
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "Quiz Complete!",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Score card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "${state.score}/${state.total}",
-                    style = MaterialTheme.typography.displayLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "Accuracy: ${state.accuracy}%",
-                    style = MaterialTheme.typography.titleLarge
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(48.dp))
-
-        Button(
-            onClick = { viewModel.restartQuiz() },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-        ) {
-            Text("Practice Again", fontSize = 18.sp)
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedButton(
-            onClick = onNavigateBack,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-        ) {
-            Text("Back to Home", fontSize = 18.sp)
-        }
-    }
-}
-
-@Composable
 fun OptionButton(text: String, onClick: () -> Unit) {
     Button(
         onClick = onClick,
@@ -251,20 +174,13 @@ fun OptionButton(text: String, onClick: () -> Unit) {
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant
         )
     ) {
-        Text(
-            text = text,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Medium
-        )
+        Text(text = text, fontSize = 20.sp, fontWeight = FontWeight.Medium)
     }
 }
 
 @Composable
 fun LoadingScreen() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         CircularProgressIndicator()
     }
 }

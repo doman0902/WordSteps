@@ -42,6 +42,8 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.datastore)
+
     // Jetpack Compose
     implementation(libs.androidx.navigation.compose)
     implementation("androidx.compose.ui:ui:1.5.4")
