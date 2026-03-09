@@ -37,6 +37,8 @@ import com.example.wordsteps.ui.typing.TypingViewModelFactory
 import com.example.wordsteps.ui.reconstruction.ReconstructionScreen
 import com.example.wordsteps.ui.reconstruction.ReconstructionViewModel
 import com.example.wordsteps.ui.reconstruction.ReconstructionViewModelFactory
+import com.example.wordsteps.ui.timed.TimedScreen
+import com.example.wordsteps.ui.timed.TimedViewModel
 
 object Routes {
     const val HOME     = "home"
@@ -146,6 +148,10 @@ fun WordStepsApp(
                 viewModel      = vm,
                 onNavigateBack = { navController.popBackStack() }
             )
+        }
+        composable("TIMED") {
+            val vm: TimedViewModel = viewModel(factory = TimedViewModelFactory(repository))
+            TimedScreen(viewModel = vm, onNavigateBack = { navController.popBackStack() })
         }
 
         composable(Routes.SETTINGS) {

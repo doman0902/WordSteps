@@ -57,6 +57,7 @@ fun HomeScreen(
     onOpenStats: () -> Unit,
     onStartTyping: () -> Unit,
     onStartReconstruction: () -> Unit,
+    onStartTimed: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
     val state = viewModel.uiState.collectAsState().value
@@ -151,7 +152,7 @@ fun HomeScreen(
                 )
                 Spacer(Modifier.height(24.dp))
                 Text(
-                    "MINI-GAME",
+                    "MINI-GAMES",
                     color         = TextSecondary,
                     fontSize      = 11.sp,
                     fontWeight    = FontWeight.SemiBold,
@@ -167,6 +168,15 @@ fun HomeScreen(
                     gradient    = Brush.linearGradient(listOf(Color(0xFF1A0A3D), Navy)),
                     accentColor = Color(0xFF9D7FFF),
                     onClick     = onStartReconstruction
+                )
+                Spacer(Modifier.height(10.dp))
+                PracticeModeCard(
+                    title       = "Timed Blitz",
+                    subtitle    = "Race the clock — how many words can you spell?",
+                    emoji       = "⏱",
+                    gradient    = Brush.linearGradient(listOf(Color(0xFF3D2A00), Navy)),
+                    accentColor = Amber,
+                    onClick     = onStartTimed
                 )
 
                 Spacer(Modifier.height(28.dp))

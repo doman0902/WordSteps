@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.wordsteps.data.database.ReconstructionScore
@@ -38,10 +39,19 @@ private val Purple        = Color(0xFF9D7FFF)
 private val TextPrimary   = Color(0xFFF0F4FF)
 private val TextSecondary = Color(0xFF8A9BB5)
 
-private val TILE_SIZE     = 44.dp
-private val TILE_GAP      = 6.dp
-private val TILE_FONT     = 19.sp
+private val BANK_TILE_SIZE = 44.dp
+private val TILE_GAP       = 6.dp
+private val BANK_TILE_FONT = 19.sp
 private const val TILES_PER_ROW = 8
+
+private fun slotTileSize(screenWidthDp: Float, wordLength: Int, horizontalPadding: Float = 48f): Pair<androidx.compose.ui.unit.Dp, androidx.compose.ui.unit.TextUnit> {
+    if (wordLength == 0) return Pair(44.dp, 19.sp)
+    val available = screenWidthDp - horizontalPadding
+    val rawSize = (available - (wordLength - 1) * TILE_GAP.value) / wordLength
+    val tileSize = rawSize.coerceIn(20f, 44f)
+    val fontSize = (tileSize * 0.42f).coerceIn(10f, 19f)
+    return Pair(tileSize.dp, fontSize.sp)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,11 +77,12 @@ fun ReconstructionScreen(
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             when (val s = state) {
-                is ReconstructionUiState.Loading    -> LoadingContent()
-                is ReconstructionUiState.Question   -> QuestionContent(s, viewModel)
-                is ReconstructionUiState.WordFailed -> WordFailedContent(s) { viewModel.nextQuestion() }
-                is ReconstructionUiState.Feedback   -> FeedbackContent(s) { viewModel.nextQuestion() }
-                is ReconstructionUiState.Finished   -> FinishedContent(s,
+                is ReconstructionUiState.Loading     -> LoadingContent()
+                is ReconstructionUiState.Question    -> QuestionContent(s, viewModel)
+                is ReconstructionUiState.WordComplete -> WordCompleteContent(s) { viewModel.nextQuestion() }
+                is ReconstructionUiState.WordFailed  -> WordFailedContent(s) { viewModel.nextQuestion() }
+                is ReconstructionUiState.Feedback    -> FeedbackContent(s) { viewModel.nextQuestion() }
+                is ReconstructionUiState.Finished    -> FinishedContent(s,
                     onPlayAgain = { viewModel.restartSession() },
                     onHome      = onNavigateBack
                 )
@@ -89,6 +100,8 @@ private fun LoadingContent() {
 @Composable
 private fun QuestionContent(state: ReconstructionUiState.Question, viewModel: ReconstructionViewModel) {
     val wordLen = state.wordToReconstruct.length
+    val screenWidth = LocalConfiguration.current.screenWidthDp.toFloat()
+    val (slotSize, slotFont) = slotTileSize(screenWidth, wordLen)
 
     Column(
         modifier = Modifier
@@ -143,6 +156,8 @@ private fun QuestionContent(state: ReconstructionUiState.Question, viewModel: Re
         SlotGrid(
             wordLength = wordLen,
             slots      = state.slots,
+            tileSize   = slotSize,
+            tileFont   = slotFont,
             onRemove   = { tile -> viewModel.removePlacedTile(tile) }
         )
 
@@ -161,71 +176,70 @@ private fun QuestionContent(state: ReconstructionUiState.Question, viewModel: Re
     }
 }
 
-// ── Slot grid — renders word-length slots at their correct positions ──────────
+// ── Slot grid ─────────────────────────────────────────────────────────────────
 @Composable
 private fun SlotGrid(
     wordLength: Int,
     slots: Map<Int, LetterTile>,
+    tileSize: androidx.compose.ui.unit.Dp,
+    tileFont: androidx.compose.ui.unit.TextUnit,
     onRemove: (LetterTile) -> Unit
 ) {
-    // The last filled non-locked slot index (tappable for backspace)
     val lastFilledIndex = (0 until wordLength).reversed()
         .firstOrNull { slots[it]?.isLocked == false }
 
-    val rows = (0 until wordLength).chunked(TILES_PER_ROW)
-    Column(horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(TILE_GAP)) {
-        rows.forEach { indices ->
-            Row(horizontalArrangement = Arrangement.spacedBy(TILE_GAP)) {
-                indices.forEach { index ->
-                    val tile     = slots[index]
-                    val isLocked = tile?.isLocked == true
-                    val isLast   = index == lastFilledIndex
+    Row(horizontalArrangement = Arrangement.spacedBy(TILE_GAP)) {
+        (0 until wordLength).forEach { index ->
+            val tile     = slots[index]
+            val isLocked = tile?.isLocked == true
+            val isLast   = index == lastFilledIndex
 
-                    val bgColor = when {
-                        isLocked       -> Purple.copy(alpha = 0.08f)
-                        tile != null   -> Purple.copy(alpha = 0.18f)
-                        else           -> NavyMid
-                    }
-                    val borderColor = when {
-                        isLocked       -> Purple.copy(alpha = 0.3f)
-                        isLast         -> Purple
-                        tile != null   -> Purple.copy(alpha = 0.5f)
-                        else           -> NavyLight
-                    }
+            val bgColor = when {
+                isLocked     -> Purple.copy(alpha = 0.08f)
+                tile != null -> Purple.copy(alpha = 0.18f)
+                else         -> NavyMid
+            }
+            val borderColor = when {
+                isLocked     -> Purple.copy(alpha = 0.3f)
+                isLast       -> Purple
+                tile != null -> Purple.copy(alpha = 0.5f)
+                else         -> NavyLight
+            }
 
-                    Box(
-                        modifier = Modifier
-                            .size(TILE_SIZE)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(bgColor)
-                            .border(1.5.dp, borderColor, RoundedCornerShape(8.dp))
-                            .then(
-                                if (tile != null && isLast && !isLocked)
-                                    Modifier.clickable { onRemove(tile) }
-                                else Modifier
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (tile != null) {
-                            Text(
-                                tile.char.uppercase(),
-                                color      = if (isLocked) TextSecondary else TextPrimary,
-                                fontSize   = TILE_FONT,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+            Box(
+                modifier = Modifier
+                    .size(tileSize)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(bgColor)
+                    .border(1.5.dp, borderColor, RoundedCornerShape(8.dp))
+                    .then(
+                        if (tile != null && isLast && !isLocked)
+                            Modifier.clickable { onRemove(tile) }
+                        else Modifier
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (tile != null) {
+                    Text(
+                        tile.char.uppercase(),
+                        color      = if (isLocked) TextSecondary else TextPrimary,
+                        fontSize   = tileFont,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
     }
 }
 
-// ── Bank grid — same tile size, wraps at TILES_PER_ROW ───────────────────────
+// ── Bank grid ─────────────────────────────────────────────────────────────────
 @Composable
 private fun BankGrid(tiles: List<LetterTile>, onTap: (LetterTile) -> Unit) {
-    val rows = tiles.chunked(TILES_PER_ROW)
+    // Compute how many 44dp tiles actually fit in the available width
+    val screenWidth = LocalConfiguration.current.screenWidthDp.toFloat()
+    val available   = screenWidth - 48f  // 24dp padding each side
+    val tilesPerRow = maxOf(1, ((available + TILE_GAP.value) / (BANK_TILE_SIZE.value + TILE_GAP.value)).toInt())
+    val rows = tiles.chunked(tilesPerRow)
     Column(horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(TILE_GAP)) {
         rows.forEach { row ->
@@ -242,12 +256,118 @@ private fun BankTile(tile: LetterTile, onTap: () -> Unit) {
     val borderColor by animateColorAsState(if (tile.isFlashingWrong) Rose else Amber.copy(alpha = 0.5f), tween(200), label = "bd")
     val textColor   by animateColorAsState(if (tile.isFlashingWrong) Rose else Amber, tween(200), label = "tx")
     Box(
-        modifier = Modifier.size(TILE_SIZE).clip(RoundedCornerShape(10.dp))
+        modifier = Modifier.size(BANK_TILE_SIZE).clip(RoundedCornerShape(10.dp))
             .background(bgColor).border(1.dp, borderColor, RoundedCornerShape(10.dp))
             .clickable(enabled = !tile.isFlashingWrong) { onTap() },
         contentAlignment = Alignment.Center
     ) {
-        Text(tile.char.uppercase(), color = textColor, fontSize = TILE_FONT, fontWeight = FontWeight.Bold)
+        Text(tile.char.uppercase(), color = textColor, fontSize = BANK_TILE_FONT, fontWeight = FontWeight.Bold)
+    }
+}
+
+// ── Word Complete — NEW: user sees the full completed word, taps Next themselves ──
+@Composable
+private fun WordCompleteContent(
+    state: ReconstructionUiState.WordComplete,
+    onNext: () -> Unit
+) {
+    val screenWidth = LocalConfiguration.current.screenWidthDp.toFloat()
+    val (slotSize, slotFont) = slotTileSize(screenWidth, state.correctWord.length, horizontalPadding = 56f)
+
+    Column(
+        Modifier.fillMaxSize().padding(28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // Success icon
+        Box(
+            Modifier.size(80.dp).clip(CircleShape)
+                .background(Teal.copy(alpha = 0.12f))
+                .border(2.dp, Teal.copy(alpha = 0.4f), CircleShape),
+            Alignment.Center
+        ) {
+            Text("✓", fontSize = 36.sp, color = Teal, fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Text("Correct!", color = Teal, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
+
+        Spacer(Modifier.height(8.dp))
+
+        // The completed word — single row, shrunk to fit
+        Row(horizontalArrangement = Arrangement.spacedBy(TILE_GAP)) {
+            state.correctWord.uppercase().forEach { ch ->
+                Box(
+                    modifier = Modifier
+                        .size(slotSize)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Teal.copy(alpha = 0.12f))
+                        .border(1.5.dp, Teal.copy(alpha = 0.5f), RoundedCornerShape(8.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(ch.toString(), color = Teal, fontSize = slotFont, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        // Score summary card
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                .background(NavyMid)
+                .border(1.dp, NavyLight, RoundedCornerShape(16.dp))
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                Text("Points earned", color = TextSecondary, fontSize = 13.sp)
+                Text("+${state.pointsEarned}", color = Amber, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+            }
+            if (state.gotPerfectBonus) {
+                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                    Text("✨ Perfect bonus", color = Amber, fontSize = 12.sp)
+                    Text("+${Scoring.PERFECT_WORD_BONUS}", color = Amber, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+            }
+            Divider(color = NavyLight, thickness = 0.5.dp)
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                Text("Combo", color = TextSecondary, fontSize = 13.sp)
+                val comboColor = when {
+                    state.combo >= 3.0 -> Amber
+                    state.combo >= 2.0 -> Teal
+                    else               -> Purple
+                }
+                Text("×${"%.1f".format(state.combo)}", color = comboColor,
+                    fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+            }
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
+                Text("Total", color = TextSecondary, fontSize = 13.sp)
+                Text("${state.totalPoints} pts", color = TextPrimary,
+                    fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "${state.questionNumber} / ${state.totalQuestions}",
+            color = TextSecondary, fontSize = 12.sp
+        )
+
+        Spacer(Modifier.height(40.dp))
+
+        Button(
+            onClick  = onNext,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape    = RoundedCornerShape(16.dp),
+            colors   = ButtonDefaults.buttonColors(containerColor = Purple)
+        ) {
+            Text(
+                if (state.questionNumber == state.totalQuestions) "See Results" else "Next Word →",
+                color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp
+            )
+        }
     }
 }
 
@@ -256,7 +376,7 @@ private fun BankTile(tile: LetterTile, onTap: () -> Unit) {
 private fun WordFailedContent(state: ReconstructionUiState.WordFailed, onNext: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(28.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Text("💔", fontSize = 64.sp)
+        Text("", fontSize = 64.sp)
         Spacer(Modifier.height(12.dp))
         Text("Combo lost!", color = Rose, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
         Spacer(Modifier.height(6.dp))
@@ -280,7 +400,7 @@ private fun WordFailedContent(state: ReconstructionUiState.WordFailed, onNext: (
     }
 }
 
-// ── Correct Feedback ──────────────────────────────────────────────────────────
+// ── Correct Feedback (kept for compatibility, can be removed if unused) ───────
 @Composable
 private fun FeedbackContent(state: ReconstructionUiState.Feedback, onNext: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(28.dp),
@@ -333,7 +453,7 @@ private fun FeedbackContent(state: ReconstructionUiState.Feedback, onNext: () ->
 // ── End Screen ────────────────────────────────────────────────────────────────
 @Composable
 private fun FinishedContent(state: ReconstructionUiState.Finished, onPlayAgain: () -> Unit, onHome: () -> Unit) {
-    val medals     = listOf("🥇", "🥈", "🥉")
+    val medals     = listOf("", "", "")
     val dateFormat = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).background(Navy)
