@@ -56,6 +56,7 @@ fun HomeScreen(
     onStartAdaptive: () -> Unit,
     onOpenStats: () -> Unit,
     onStartTyping: () -> Unit,
+    onStartReconstruction: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
     val state = viewModel.uiState.collectAsState().value
@@ -147,6 +148,25 @@ fun HomeScreen(
                     emoji = "🔊",
                     gradient = Brush.linearGradient(listOf(Color(0xFF1A0A3D), Navy)),
                     accentColor = Color(0xFF9D7FFF), onClick = onStartTyping
+                )
+                Spacer(Modifier.height(24.dp))
+                Text(
+                    "MINI-GAME",
+                    color         = TextSecondary,
+                    fontSize      = 11.sp,
+                    fontWeight    = FontWeight.SemiBold,
+                    letterSpacing = 1.2.sp,
+                    modifier      = Modifier.align(Alignment.Start)
+                )
+                Spacer(Modifier.height(10.dp))
+
+                PracticeModeCard(
+                    title       = "Word Reconstruction",
+                    subtitle    = "Unscramble letters, build combos, beat your score",
+                    emoji       = "🧩",
+                    gradient    = Brush.linearGradient(listOf(Color(0xFF1A0A3D), Navy)),
+                    accentColor = Color(0xFF9D7FFF),
+                    onClick     = onStartReconstruction
                 )
 
                 Spacer(Modifier.height(28.dp))

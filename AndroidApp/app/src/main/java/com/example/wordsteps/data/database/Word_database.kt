@@ -53,14 +53,20 @@ interface PatternMasteryDao {
 }
 
 @Database(
-    entities = [Attempt::class, UserStats::class, PatternMastery::class],
-    version = 1,
+    entities = [
+        Attempt::class,
+        UserStats::class,
+        PatternMastery::class,
+        ReconstructionScore::class      // ← NEW TABLE
+    ],
+    version = 2,                        // ← bumped from 1 to 2
     exportSchema = false
 )
 abstract class SpellDatabase : RoomDatabase() {
     abstract fun attemptDao(): AttemptDao
     abstract fun statsDao(): StatsDao
     abstract fun patternMasteryDao(): PatternMasteryDao
+    abstract fun reconstructionScoreDao(): ReconstructionScoreDao   // ← NEW DAO
 
     companion object {
         @Volatile
@@ -72,7 +78,10 @@ abstract class SpellDatabase : RoomDatabase() {
                     context.applicationContext,
                     SpellDatabase::class.java,
                     "spell_database"
-                ).build()
+                )
+                    // Simple migration: just recreate (dev build — no user data to preserve)
+                    .fallbackToDestructiveMigration()
+                    .build()
                 INSTANCE = instance
                 instance
             }

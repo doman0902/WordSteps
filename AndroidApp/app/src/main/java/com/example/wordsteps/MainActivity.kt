@@ -34,6 +34,9 @@ import com.example.wordsteps.ui.theme.WordStepsTheme
 import com.example.wordsteps.ui.typing.TypingScreen
 import com.example.wordsteps.ui.typing.TypingViewModel
 import com.example.wordsteps.ui.typing.TypingViewModelFactory
+import com.example.wordsteps.ui.reconstruction.ReconstructionScreen
+import com.example.wordsteps.ui.reconstruction.ReconstructionViewModel
+import com.example.wordsteps.ui.reconstruction.ReconstructionViewModelFactory
 
 object Routes {
     const val HOME     = "home"
@@ -42,6 +45,8 @@ object Routes {
     const val STATS    = "stats"
     const val TYPING   = "typing"
     const val SETTINGS = "settings"
+
+    const val RECONSTRUCTION = "reconstruction"
 }
 
 class MainActivity : ComponentActivity() {
@@ -83,6 +88,7 @@ fun WordStepsApp(
                 onStartAdaptive = { navController.navigate(Routes.ADAPTIVE) },
                 onOpenStats     = { navController.navigate(Routes.STATS) },
                 onStartTyping   = { navController.navigate(Routes.TYPING) },
+                onStartReconstruction = { navController.navigate(Routes.RECONSTRUCTION) },
                 onOpenSettings  = { navController.navigate(Routes.SETTINGS) }
             )
         }
@@ -113,7 +119,7 @@ fun WordStepsApp(
         }
 
         composable(Routes.STATS) {
-            val vm: StatsViewModel = viewModel(factory = StatsViewModelFactory(repository))
+            val vm: StatsViewModel = viewModel(factory = StatsViewModelFactory(repository,database))
             StatsScreen(
                 viewModel      = vm,
                 onNavigateBack = { navController.popBackStack() }
@@ -126,6 +132,17 @@ fun WordStepsApp(
                 factory = TypingViewModelFactory(repository, appContext)
             )
             TypingScreen(
+                viewModel      = vm,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.RECONSTRUCTION) { backStackEntry ->
+            val vm: ReconstructionViewModel = viewModel(
+                viewModelStoreOwner = backStackEntry,
+                factory = ReconstructionViewModelFactory(repository, database)
+            )
+            ReconstructionScreen(
                 viewModel      = vm,
                 onNavigateBack = { navController.popBackStack() }
             )
