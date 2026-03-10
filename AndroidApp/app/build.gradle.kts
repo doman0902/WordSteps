@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.wordsteps"
+    namespace = "com.doman.wordsteps"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.androidapp"
+        applicationId = "com.doman.wordsteps"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
