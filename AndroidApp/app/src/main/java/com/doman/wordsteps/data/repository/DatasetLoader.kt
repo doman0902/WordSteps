@@ -15,8 +15,6 @@ class DatasetLoader(private val context: Context) {
 
     private var allWords: List<WordQuestion> = emptyList()
 
-    // ── NEW: word → list of its patterns (from CSV rules columns) ────────────
-    // e.g. "receive" → ["ie_ei_swap", "vowel_drop", "vowel_drop"]
     private var wordPatternMap: Map<String, List<String>> = emptyMap()
 
     fun loadDataset(): List<WordQuestion> {
@@ -45,7 +43,6 @@ class DatasetLoader(private val context: Context) {
 
                         words.add(WordQuestion(word, word, misspellings))
 
-                        // Store all patterns associated with this word
                         patternMap[word.lowercase()] = misspellings.map { it.pattern }
                     }
                 }
@@ -60,6 +57,9 @@ class DatasetLoader(private val context: Context) {
 
         return allWords
     }
+
+    fun getWordQuestion(word: String): WordQuestion? =
+        allWords.firstOrNull { it.word.equals(word, ignoreCase = true) }
 
     /**
      * Returns the most common pattern for a given word.

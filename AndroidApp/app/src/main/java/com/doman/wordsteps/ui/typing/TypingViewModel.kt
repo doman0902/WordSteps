@@ -137,7 +137,6 @@ class TypingViewModel(private val repository: SpellRepository, private val conte
 
         if (isCorrect) correctWords.add(question.correctWord)
 
-        // Show feedback immediately — no waiting for network
         _uiState.value = TypingUiState.Feedback(
             isCorrect      = isCorrect,
             correctWord    = question.correctWord,
@@ -149,8 +148,6 @@ class TypingViewModel(private val repository: SpellRepository, private val conte
             isLastQuestion = isLast
         )
 
-        // checkAnswer calls ML API and returns the real pattern
-        // We use it for both DB logging AND the summary
         viewModelScope.launch {
             val pattern = repository.checkAnswer(question.correctWord, input, isCorrect)
 
@@ -169,9 +166,6 @@ class TypingViewModel(private val repository: SpellRepository, private val conte
 
     fun nextQuestion() {
         if (currentIndex >= questions.size - 1) {
-            // Build summary from whatever the coroutines have written so far
-            // By the time the user reads feedback and taps "See Results"
-            // the API call has almost always finished
             _uiState.value = TypingUiState.Finished(
                 SessionSummary(
                     score            = score,

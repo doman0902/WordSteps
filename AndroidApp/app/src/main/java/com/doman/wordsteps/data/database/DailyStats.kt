@@ -5,7 +5,7 @@ import androidx.room.*
 @Entity(tableName = "daily_stats")
 data class DailyStats(
     @PrimaryKey
-    val date: String,           // "2024-03-10" format
+    val date: String,
     val totalAttempts: Int,
     val correctAttempts: Int,
     val timestamp: Long = System.currentTimeMillis()

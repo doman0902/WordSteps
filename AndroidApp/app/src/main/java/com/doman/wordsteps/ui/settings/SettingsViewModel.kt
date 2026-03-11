@@ -12,8 +12,8 @@ import kotlinx.coroutines.launch
 
 data class SettingsUiState(
     val serverIp: String = "",
-    val isSaved: Boolean = false,       // brief confirmation after saving IP
-    val resetDone: Boolean = false      // brief confirmation after reset
+    val isSaved: Boolean = false,
+    val resetDone: Boolean = false
 )
 
 class SettingsViewModel(

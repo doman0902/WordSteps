@@ -98,7 +98,9 @@ class PracticeViewModel(private val repository: SpellRepository) : ViewModel() {
             val pattern = repository.checkAnswer(
                 correctWord = question.correctWord,
                 userAnswer  = userAnswer,
-                isCorrect   = isCorrect
+                isCorrect   = isCorrect,
+                allOptions = question.options
+
             )
             if (!isCorrect) {
                 wrongWords.add(WrongWord(question.correctWord, userAnswer, pattern))

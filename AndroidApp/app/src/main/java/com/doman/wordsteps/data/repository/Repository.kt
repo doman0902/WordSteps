@@ -27,7 +27,8 @@ class SpellRepository(
         return QuizQuestion(
             correctWord  = wordQuestion.correctSpelling,
             options      = options,
-            correctIndex = options.indexOf(wordQuestion.correctSpelling)
+            correctIndex = options.indexOf(wordQuestion.correctSpelling),
+            misspellings = wordQuestion.misspellings
         )
     }
 
@@ -46,16 +47,65 @@ class SpellRepository(
         }
     }
 
+    /**
+     * Rögzíti a felhasználó válaszát és frissíti a pattern mastery-t.
+     *
+     * Logika:
+     * - Helyes válasz  → az összes megjelenített hibás opció pattern-je +1 correct
+     *                    (elkerülted őket, tehát "tudtad" őket)
+     * - Helytelen válasz → a választott opció pattern-je -1 (rosszul csináltad)
+     *                      az összes többi hibás opció pattern-je +1 correct
+     *                      (ezeket legalább elkerülted)
+     *
+     * @param correctWord   a helyes szó
+     * @param userAnswer    amit a felhasználó választott
+     * @param isCorrect     helyes volt-e a válasz
+     * @param allOptions    az összes megjelenített opció (csak Practice/Adaptive módban)
+     *                      ha null → Typing mód, csak helyes/helytelen számít
+     */
     suspend fun checkAnswer(
         correctWord: String,
         userAnswer: String,
-        isCorrect: Boolean
+        isCorrect: Boolean,
+        allOptions: List<String>? = null
     ): String? {
-        val pattern: String? = if (isCorrect) {
-            datasetLoader.getPrimaryPattern(correctWord)
+
+        val optionPatterns: Map<String, String> = if (allOptions != null) {
+            allOptions
+                .filter { it != correctWord }
+                .mapNotNull { option ->
+                    val word = datasetLoader.getWordQuestion(correctWord)
+                    val pattern = word?.misspellings
+                        ?.firstOrNull { it.text == option }
+                        ?.pattern
+                    if (pattern != null) option to pattern else null
+                }
+                .toMap()
         } else {
+            emptyMap()
+        }
+
+        val wrongPattern: String? = if (!isCorrect) {
             mlApi.predictPattern(correctWord, userAnswer)?.pattern
-                ?: datasetLoader.getPrimaryPattern(correctWord)
+                ?: optionPatterns[userAnswer]
+        } else {
+            null
+        }
+
+        if (isCorrect) {
+            optionPatterns.values.distinct().forEach { pattern ->
+                updatePatternMastery(pattern, isCorrect = true)
+            }
+        } else {
+            if (wrongPattern != null) {
+                updatePatternMastery(wrongPattern, isCorrect = false)
+            }
+            optionPatterns.values
+                .distinct()
+                .filter { it != wrongPattern }
+                .forEach { pattern ->
+                    updatePatternMastery(pattern, isCorrect = true)
+                }
         }
 
         attemptDao.insertAttempt(
@@ -63,15 +113,14 @@ class SpellRepository(
                 correctWord    = correctWord,
                 userAnswer     = userAnswer,
                 isCorrect      = isCorrect,
-                mistakePattern = if (!isCorrect) pattern else null
+                mistakePattern = wrongPattern
             )
         )
 
         updateUserStats(isCorrect)
         updateDailyStats(isCorrect)
-        if (pattern != null) updatePatternMastery(pattern, isCorrect)
 
-        return pattern
+        return wrongPattern
     }
 
     private suspend fun updateUserStats(isCorrect: Boolean) {
@@ -129,5 +178,6 @@ class SpellRepository(
 data class QuizQuestion(
     val correctWord: String,
     val options: List<String>,
-    val correctIndex: Int
+    val correctIndex: Int,
+    val misspellings: List<Misspelling> = emptyList()
 )

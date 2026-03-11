@@ -83,7 +83,6 @@ fun StatsScreen(
                     .fillMaxSize()
                     .padding(padding)
             ) {
-                // ── Tab row ───────────────────────────────────────────────────
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -114,7 +113,6 @@ fun StatsScreen(
                     }
                 }
 
-                // ── Tab content ───────────────────────────────────────────────
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -123,7 +121,6 @@ fun StatsScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     if (selectedTab == 0) {
-                        // ── STATS TAB ─────────────────────────────────────────
                         OverviewCard(state.stats)
                         BestStreakCard(state.stats)
                         if (state.dailyStats.isNotEmpty()) {
@@ -132,7 +129,6 @@ fun StatsScreen(
                         PatternBreakdownCard(state.patterns)
                         RecentMistakesCard(state.recentMistakes)
                     } else {
-                        // ── LEADERBOARDS TAB ──────────────────────────────────
                         ReconstructionLeaderboardCard(state.reconstructionTopScores)
                         TimedLeaderboardCard(
                             scores30 = state.timedScores30,
@@ -147,7 +143,6 @@ fun StatsScreen(
     }
 }
 
-// ── Overview accuracy ring ────────────────────────────────────────────────────
 @Composable
 private fun OverviewCard(stats: UserStats) {
     val accuracy = if (stats.totalAttempts > 0)
@@ -189,7 +184,6 @@ private fun OverviewRow(label: String, value: String, color: Color) {
     }
 }
 
-// ── Streak card ───────────────────────────────────────────────────────────────
 @Composable
 private fun BestStreakCard(stats: UserStats) {
     SectionCard {
@@ -211,7 +205,6 @@ private fun StreakStat(emoji: String, value: String, label: String, color: Color
     }
 }
 
-// ── Accuracy line chart ───────────────────────────────────────────────────────
 @Composable
 private fun AccuracyChartCard(dailyStats: List<DailyStats>) {
     // dailyStats comes newest-first from DB, reverse for chart left→right
@@ -311,7 +304,6 @@ private fun AccuracyChartCard(dailyStats: List<DailyStats>) {
     }
 }
 
-// ── Pattern breakdown bars ────────────────────────────────────────────────────
 @Composable
 private fun PatternBreakdownCard(patterns: List<PatternMastery>) {
     SectionCard {
@@ -355,7 +347,6 @@ private fun PatternBreakdownCard(patterns: List<PatternMastery>) {
     }
 }
 
-// ── Recent mistakes ───────────────────────────────────────────────────────────
 @Composable
 private fun RecentMistakesCard(mistakes: List<com.doman.wordsteps.data.models.Attempt>) {
     SectionCard {
@@ -388,7 +379,6 @@ private fun RecentMistakesCard(mistakes: List<com.doman.wordsteps.data.models.At
     }
 }
 
-// ── Reconstruction leaderboard ────────────────────────────────────────────────
 @Composable
 private fun ReconstructionLeaderboardCard(scores: List<ReconstructionScore>) {
     val medals     = listOf("🥇", "🥈", "🥉")
@@ -435,7 +425,6 @@ private fun ReconstructionLeaderboardCard(scores: List<ReconstructionScore>) {
     }
 }
 
-// ── Timed Blitz leaderboard with duration tabs ────────────────────────────────
 @Composable
 private fun TimedLeaderboardCard(
     scores30: List<TimedScore>,

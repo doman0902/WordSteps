@@ -4,8 +4,8 @@ data class SessionSummary(
     val score: Int,
     val total: Int,
     val accuracy: Int,
-    val correctWords: List<String>,          // words the user got right
-    val wrongWords: List<WrongWord>,          // words the user got wrong
+    val correctWords: List<String>,
+    val wrongWords: List<WrongWord>,
     val patternBreakdown: List<PatternResult>
 )
 

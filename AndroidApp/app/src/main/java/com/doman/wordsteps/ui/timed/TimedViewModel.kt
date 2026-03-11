@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-// Which option the user tapped and whether it was right
 data class AnswerFlash(
     val selectedIndex: Int,
     val correctIndex: Int

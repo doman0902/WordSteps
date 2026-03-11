@@ -2,7 +2,6 @@ package com.doman.wordsteps.data.database
 
 import androidx.room.*
 
-// ── Entity ────────────────────────────────────────────────────────────────────
 @Entity(tableName = "reconstruction_scores")
 data class ReconstructionScore(
     @PrimaryKey(autoGenerate = true)
@@ -10,11 +9,10 @@ data class ReconstructionScore(
     val totalPoints: Int,
     val wordsCompleted: Int,
     val totalWords: Int,
-    val bestCombo: Double,       // highest multiplier reached in the session
+    val bestCombo: Double,
     val timestamp: Long = System.currentTimeMillis()
 )
 
-// ── DAO ───────────────────────────────────────────────────────────────────────
 @Dao
 interface ReconstructionScoreDao {
 

@@ -69,7 +69,6 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            // ── Server IP ─────────────────────────────────────────────────────
             SectionCard {
                 Text(
                     "ML Server IP",
@@ -121,7 +120,6 @@ fun SettingsScreen(
                 }
             }
 
-            // ── Reset progress ────────────────────────────────────────────────
             SectionCard {
                 Text(
                     "Progress",
@@ -151,7 +149,6 @@ fun SettingsScreen(
         }
     }
 
-    // ── Confirmation dialog ───────────────────────────────────────────────────
     if (showResetDialog) {
         AlertDialog(
             onDismissRequest = { showResetDialog = false },

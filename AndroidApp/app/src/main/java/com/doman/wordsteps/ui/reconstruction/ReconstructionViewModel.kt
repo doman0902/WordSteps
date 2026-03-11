@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 data class LetterTile(
-    val id: Int,              // = position in word, always unique
+    val id: Int,
     val char: Char,
     val isFlashingWrong: Boolean = false,
     val isLocked: Boolean = false
@@ -34,7 +34,6 @@ sealed class ReconstructionUiState {
     object Loading : ReconstructionUiState()
     data class Question(
         val wordToReconstruct: String,
-        // slots: word-position index -> tile (locked or player-placed). absent = empty.
         val slots: Map<Int, LetterTile>,
         val scrambledTiles: List<LetterTile>,
         val combo: Double,
@@ -45,7 +44,6 @@ sealed class ReconstructionUiState {
         val wordHadMistake: Boolean,
         val scoredTileIds: Set<Int>
     ) : ReconstructionUiState()
-    // NEW: word is fully placed — show completed word, wait for user to press Next
     data class WordComplete(
         val correctWord: String,
         val pointsEarned: Int,
@@ -129,19 +127,16 @@ class ReconstructionViewModel(
         wordHadMistake = false
         val len = word.length
 
-        // How many positions to pre-fill as hints.
-        // Always at least 1 (index 0) and always leave at least 1 tile for the player.
         val hintCount = when {
             len <= 5  -> 1
             len == 6  -> 2
-            len == 7  -> 2          // FIX: was 3 — left only 4 free for 7-letter words
+            len == 7  -> 2
             len == 8  -> 3
-            len <= 10 -> 3          // FIX: was 4
-            len <= 12 -> 4          // FIX: was 5
-            else      -> 5          // FIX: was 6 — "advertisement"(13) had 6 hints
-        }.coerceIn(1, len - 1)      // FIX: always leave at least 1 free tile
+            len <= 10 -> 3
+            len <= 12 -> 4
+            else      -> 5
+        }.coerceIn(1, len - 1)
 
-        // Position 0 always locked; rest chosen randomly from the remaining positions
         val extraHintCount = hintCount - 1
         val extraLockedIndices = if (extraHintCount > 0)
             (1 until len).shuffled().take(extraHintCount).toSet()
@@ -154,17 +149,13 @@ class ReconstructionViewModel(
             LetterTile(id = i, char = c, isLocked = i in lockedIndices)
         }
 
-        // Slots pre-filled with locked tiles
         val initialSlots: Map<Int, LetterTile> = allTiles
             .filter { it.isLocked }
             .associateBy { it.id }
 
-        // Bank: only unlocked tiles, shuffled
         val bankTiles = allTiles.filter { !it.isLocked }.shuffled()
 
-        // Safety check: bankTiles must not be empty
         if (bankTiles.isEmpty()) {
-            // Degenerate case — skip to next
             currentIndex++
             showQuestion()
             return
@@ -180,7 +171,7 @@ class ReconstructionViewModel(
             questionNumber    = currentIndex + 1,
             totalQuestions    = words.size,
             wordHadMistake    = false,
-            scoredTileIds     = lockedIndices   // locked tiles never earn points
+            scoredTileIds     = lockedIndices
         )
     }
 
@@ -212,7 +203,6 @@ class ReconstructionViewModel(
         val newScoredIds = state.scoredTileIds + tile.id
 
         if (newSlots.size == state.wordToReconstruct.length) {
-            // Word complete — log to DB, then show WordComplete state (user controls timing)
             val perfect = !state.wordHadMistake
             if (perfect) totalPoints += Scoring.PERFECT_WORD_BONUS
             correctWordCount++

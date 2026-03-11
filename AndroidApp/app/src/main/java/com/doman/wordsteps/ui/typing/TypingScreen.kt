@@ -85,7 +85,6 @@ fun TypingScreen(
     }
 }
 
-// ── Setup ─────────────────────────────────────────────────────────────────────
 @Composable
 private fun SetupScreen(onStart: (Int) -> Unit) {
     var selected by remember { mutableStateOf(10) }
@@ -137,7 +136,6 @@ private fun SetupScreen(onStart: (Int) -> Unit) {
     }
 }
 
-// ── Question ──────────────────────────────────────────────────────────────────
 @Composable
 private fun QuestionScreen(
     state: TypingUiState.Question,
@@ -254,7 +252,6 @@ private fun QuestionScreen(
     }
 }
 
-// ── Feedback ──────────────────────────────────────────────────────────────────
 @Composable
 private fun FeedbackScreen(state: TypingUiState.Feedback, onNext: () -> Unit) {
     val color = if (state.isCorrect) Teal else Rose

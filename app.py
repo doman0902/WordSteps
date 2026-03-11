@@ -24,9 +24,9 @@ try:
         model = pickle.load(f)
     with open('feature_names.pkl', 'rb') as f:
         feature_names = pickle.load(f)
-    print("✅ Model loaded successfully!")
+    print("Model loaded successfully!")
 except Exception as e:
-    print(f"❌ ERROR loading model: {e}")
+    print(f"ERROR loading model: {e}")
     print("Make sure pattern_classifier_rf.pkl and feature_names.pkl are in the same folder!")
     exit(1)
 

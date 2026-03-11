@@ -14,7 +14,7 @@ data class WordQuestion(
 
 data class Misspelling(
     val text: String,
-    val pattern: String  // vowel_swap, ie_ei_swap, etc.
+    val pattern: String
 )
 
 /**
@@ -27,7 +27,7 @@ data class Attempt(
     val correctWord: String,
     val userAnswer: String,
     val isCorrect: Boolean,
-    val mistakePattern: String?,  // if wrong, what pattern was it
+    val mistakePattern: String?,
     val timestamp: Long = System.currentTimeMillis()
 )
 
@@ -37,7 +37,7 @@ data class Attempt(
 @Entity(tableName = "stats")
 data class UserStats(
     @PrimaryKey
-    val id: Int = 1,  // Only one stats record
+    val id: Int = 1,
     val totalAttempts: Int = 0,
     val correctAttempts: Int = 0,
     val currentStreak: Int = 0,
@@ -51,7 +51,7 @@ data class UserStats(
 @Entity(tableName = "pattern_mastery")
 data class PatternMastery(
     @PrimaryKey
-    val pattern: String,  // vowel_swap, ie_ei_swap, etc.
+    val pattern: String,
     val totalAttempts: Int = 0,
     val correctAttempts: Int = 0,
     val lastPracticed: Long = 0

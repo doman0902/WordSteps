@@ -57,7 +57,6 @@ fun SessionSummaryScreen(
         AccuracyRing(summary.accuracy)
         Spacer(Modifier.height(32.dp))
 
-        // ── Correct words ─────────────────────────────────────────────────────
         if (summary.correctWords.isNotEmpty()) {
             SectionCard(title = "Correct") {
                 summary.correctWords.forEach { word ->
@@ -73,7 +72,6 @@ fun SessionSummaryScreen(
             Spacer(Modifier.height(16.dp))
         }
 
-        // ── Mistakes grouped by pattern ───────────────────────────────────────
         if (mistakePatterns.isNotEmpty() || unclassifiedMistakes.isNotEmpty()) {
             SectionCard(title = "Mistakes") {
                 mistakePatterns.forEachIndexed { index, (result, wrongWords) ->
@@ -117,7 +115,6 @@ fun SessionSummaryScreen(
             Spacer(Modifier.height(16.dp))
         }
 
-        // ── Perfect score ─────────────────────────────────────────────────────
         if (summary.wrongWords.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))

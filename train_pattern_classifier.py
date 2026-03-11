@@ -26,9 +26,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pickle
 
-# ============================================================================
-# FEATURE ENGINEERING
-# ============================================================================
 
 def extract_features(correct, misspelled):
     """
@@ -111,11 +108,6 @@ def extract_features(correct, misspelled):
     
     return features
 
-
-# ============================================================================
-# LOAD DATA
-# ============================================================================
-
 print("="*80)
 print("MISTAKE PATTERN CLASSIFIER TRAINING")
 print("="*80)
@@ -148,9 +140,7 @@ print(f"\nTotal training examples: {len(X)}")
 print(f"\nCategory distribution:")
 print(y.value_counts())
 
-# ============================================================================
 # TRAIN/TEST SPLIT
-# ============================================================================
 
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
@@ -159,9 +149,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 print(f"\nTraining set: {len(X_train)} examples")
 print(f"Test set:     {len(X_test)} examples")
 
-# ============================================================================
-# MODEL 1: DECISION TREE (Simple, Explainable)
-# ============================================================================
+# MODEL 1: DECISION TREE
 
 print("\n" + "="*80)
 print("MODEL 1: DECISION TREE")
@@ -192,9 +180,7 @@ print("\nTop 10 Most Important Features:")
 for _, row in feature_importance.head(10).iterrows():
     print(f"  {row['feature']:30s}: {row['importance']:.3f}")
 
-# ============================================================================
-# MODEL 2: RANDOM FOREST (Better Accuracy)
-# ============================================================================
+# MODEL 2: RANDOM FOREST
 
 print("\n" + "="*80)
 print("MODEL 2: RANDOM FOREST")
@@ -227,9 +213,6 @@ print("\nTop 10 Most Important Features:")
 for _, row in feature_importance_rf.head(10).iterrows():
     print(f"  {row['feature']:30s}: {row['importance']:.3f}")
 
-# ============================================================================
-# CONFUSION MATRIX
-# ============================================================================
 
 print("\n" + "="*80)
 print("CONFUSION MATRIX (Random Forest)")
@@ -251,10 +234,6 @@ plt.tight_layout()
 plt.savefig('confusion_matrix.png', dpi=150, bbox_inches='tight')
 print("\n✅ Saved confusion matrix to: confusion_matrix.png")
 
-# ============================================================================
-# SAVE MODELS
-# ============================================================================
-
 # Save the best model (Random Forest)
 with open('pattern_classifier_rf.pkl', 'wb') as f:
     pickle.dump(rf_model, f)
@@ -270,9 +249,7 @@ with open('feature_names.pkl', 'wb') as f:
     pickle.dump(X.columns.tolist(), f)
 print("✅ Saved feature names to: feature_names.pkl")
 
-# ============================================================================
 # TEST WITH EXAMPLE USER
-# ============================================================================
 
 print("\n" + "="*80)
 print("EXAMPLE: USER MISTAKE TRACKING")
@@ -299,12 +276,9 @@ for correct, wrong in user_history:
 # Identify user's weak pattern
 from collections import Counter
 weak_pattern = Counter(user_predictions).most_common(1)[0][0]
-print(f"\n🎯 User's WEAK PATTERN: {weak_pattern}")
+print(f"\n User's WEAK PATTERN: {weak_pattern}")
 print(f"   → Recommend practicing words with this pattern!")
 
-# ============================================================================
-# SUMMARY
-# ============================================================================
 
 print("\n" + "="*80)
 print("TRAINING COMPLETE!")

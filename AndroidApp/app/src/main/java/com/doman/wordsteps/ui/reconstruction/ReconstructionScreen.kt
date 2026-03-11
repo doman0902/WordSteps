@@ -95,7 +95,6 @@ private fun LoadingContent() {
     Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator(color = Purple) }
 }
 
-// ── Question ──────────────────────────────────────────────────────────────────
 @Composable
 private fun QuestionContent(state: ReconstructionUiState.Question, viewModel: ReconstructionViewModel) {
     val wordLen = state.wordToReconstruct.length
@@ -151,7 +150,6 @@ private fun QuestionContent(state: ReconstructionUiState.Question, viewModel: Re
             color = TextSecondary, fontSize = 11.sp, textAlign = TextAlign.Center)
         Spacer(Modifier.height(28.dp))
 
-        // ── Answer slots ──────────────────────────────────────────────────────
         SlotGrid(
             wordLength = wordLen,
             slots      = state.slots,
@@ -168,14 +166,12 @@ private fun QuestionContent(state: ReconstructionUiState.Question, viewModel: Re
         }
         Spacer(Modifier.height(16.dp))
 
-        // ── Letter bank ───────────────────────────────────────────────────────
         BankGrid(tiles = state.scrambledTiles, onTap = { viewModel.tapTile(it) })
 
         Spacer(Modifier.height(24.dp))
     }
 }
 
-// ── Slot grid ─────────────────────────────────────────────────────────────────
 @Composable
 private fun SlotGrid(
     wordLength: Int,
@@ -231,7 +227,6 @@ private fun SlotGrid(
     }
 }
 
-// ── Bank grid ─────────────────────────────────────────────────────────────────
 @Composable
 private fun BankGrid(tiles: List<LetterTile>, onTap: (LetterTile) -> Unit) {
     // Compute how many 44dp tiles actually fit in the available width
@@ -264,7 +259,6 @@ private fun BankTile(tile: LetterTile, onTap: () -> Unit) {
     }
 }
 
-// ── Word Complete — NEW: user sees the full completed word, taps Next themselves ──
 @Composable
 private fun WordCompleteContent(
     state: ReconstructionUiState.WordComplete,
@@ -370,7 +364,6 @@ private fun WordCompleteContent(
     }
 }
 
-// ── Word Failed ───────────────────────────────────────────────────────────────
 @Composable
 private fun WordFailedContent(state: ReconstructionUiState.WordFailed, onNext: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(28.dp),
@@ -399,7 +392,6 @@ private fun WordFailedContent(state: ReconstructionUiState.WordFailed, onNext: (
     }
 }
 
-// ── Correct Feedback (kept for compatibility, can be removed if unused) ───────
 @Composable
 private fun FeedbackContent(state: ReconstructionUiState.Feedback, onNext: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(28.dp),
@@ -449,7 +441,6 @@ private fun FeedbackContent(state: ReconstructionUiState.Feedback, onNext: () ->
     }
 }
 
-// ── End Screen ────────────────────────────────────────────────────────────────
 @Composable
 private fun FinishedContent(state: ReconstructionUiState.Finished, onPlayAgain: () -> Unit, onHome: () -> Unit) {
     val medals     = listOf("", "", "")

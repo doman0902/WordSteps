@@ -73,7 +73,6 @@ fun TimedScreen(
     }
 }
 
-// ── Loading ───────────────────────────────────────────────────────────────────
 @Composable
 private fun LoadingContent() {
     Box(Modifier.fillMaxSize(), Alignment.Center) {
@@ -81,7 +80,6 @@ private fun LoadingContent() {
     }
 }
 
-// ── Duration Picker ───────────────────────────────────────────────────────────
 @Composable
 private fun DurationPickerContent(
     state: TimedUiState.DurationPicker,
@@ -142,7 +140,6 @@ private fun DurationPickerContent(
     }
 }
 
-// ── Playing ───────────────────────────────────────────────────────────────────
 @Composable
 private fun PlayingContent(
     state: TimedUiState.Playing,
@@ -163,7 +160,6 @@ private fun PlayingContent(
             .padding(horizontal = 24.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // ── Timer bar ─────────────────────────────────────────────────────────
         LinearProgressIndicator(
             progress   = timerProgress,
             modifier   = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(50)),
@@ -172,7 +168,6 @@ private fun PlayingContent(
         )
         Spacer(Modifier.height(10.dp))
 
-        // ── HUD ───────────────────────────────────────────────────────────────
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -202,7 +197,6 @@ private fun PlayingContent(
 
         Spacer(Modifier.height(36.dp))
 
-        // ── Question prompt ───────────────────────────────────────────────────
         Text(
             "Which spelling is correct?",
             color = TextSecondary, fontSize = 13.sp,
@@ -210,7 +204,6 @@ private fun PlayingContent(
         )
         Spacer(Modifier.height(32.dp))
 
-        // ── Options ───────────────────────────────────────────────────────────
         state.question.options.forEachIndexed { index, option ->
             val flash = state.flash
 
@@ -264,7 +257,6 @@ private fun PlayingContent(
     }
 }
 
-// ── Finished ──────────────────────────────────────────────────────────────────
 @Composable
 private fun FinishedContent(
     state: TimedUiState.Finished,
@@ -289,7 +281,6 @@ private fun FinishedContent(
         Text("${state.totalDuration}s game", color = TextSecondary, fontSize = 13.sp)
         Spacer(Modifier.height(24.dp))
 
-        // ── Score card ────────────────────────────────────────────────────────
         Column(
             Modifier
                 .fillMaxWidth()
@@ -320,8 +311,6 @@ private fun FinishedContent(
         }
 
         Spacer(Modifier.height(20.dp))
-
-        // ── Top 3 leaderboard ─────────────────────────────────────────────────
         Column(
             Modifier
                 .fillMaxWidth()
