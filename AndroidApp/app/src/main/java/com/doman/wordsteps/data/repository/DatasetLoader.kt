@@ -57,6 +57,7 @@ class DatasetLoader(private val context: Context) {
 
         return allWords
     }
+    fun getAllWordQuestions(): List<WordQuestion> = allWords
 
     fun getWordQuestion(word: String): WordQuestion? =
         allWords.firstOrNull { it.word.equals(word, ignoreCase = true) }

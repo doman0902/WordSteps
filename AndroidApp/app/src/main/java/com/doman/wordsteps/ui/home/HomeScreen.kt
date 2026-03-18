@@ -58,6 +58,7 @@ fun HomeScreen(
     onStartTyping: () -> Unit,
     onStartReconstruction: () -> Unit,
     onStartTimed: () -> Unit,
+    onStartPatternHunt: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
     val state = viewModel.uiState.collectAsState().value
@@ -114,11 +115,23 @@ fun HomeScreen(
                         ) {
                             Icon(Icons.Default.BarChart, contentDescription = "Stats", tint = Amber)
                         }
-                        IconButton(
-                            onClick  = onOpenSettings,
-                            modifier = Modifier.size(44.dp).clip(CircleShape).background(NavyLight)
-                        ) {
-                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextSecondary)
+
+                        // ── Settings ikon + státusz pötty ────────────────────
+                        Box(contentAlignment = Alignment.Center) {
+                            IconButton(
+                                onClick  = onOpenSettings,
+                                modifier = Modifier.size(44.dp).clip(CircleShape).background(NavyLight)
+                            ) {
+                                Icon(Icons.Default.Settings, contentDescription = "Settings",
+                                    tint = TextSecondary)
+                            }
+                            // Pötty a Settings ikon FELETT, elég messze hogy ne hibázzanak
+                            ServerStatusDot(
+                                status   = state.serverStatus,
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .offset(y = (-28).dp)
+                            )
                         }
                     }
                 }
@@ -177,6 +190,15 @@ fun HomeScreen(
                     gradient    = Brush.linearGradient(listOf(Color(0xFF3D2A00), Navy)),
                     accentColor = Amber,
                     onClick     = onStartTimed
+                )
+                Spacer(Modifier.height(10.dp))
+                PracticeModeCard(
+                    title       = "Pattern Hunt",
+                    subtitle    = "Find the misspelled word — then name the mistake",
+                    emoji       = "🔍",
+                    gradient    = Brush.linearGradient(listOf(Color(0xFF0A2A1A), Navy)),
+                    accentColor = Teal,
+                    onClick     = onStartPatternHunt
                 )
 
                 Spacer(Modifier.height(28.dp))

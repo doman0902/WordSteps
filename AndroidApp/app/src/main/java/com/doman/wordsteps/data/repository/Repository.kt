@@ -31,7 +31,8 @@ class SpellRepository(
             misspellings = wordQuestion.misspellings
         )
     }
-
+    fun getAllWordQuestions(): List<WordQuestion> =
+        datasetLoader.getAllWordQuestions()
     fun getPracticeQuestions(count: Int = 10): List<QuizQuestion> =
         datasetLoader.getRandomWords(count).map { generateQuizQuestion(it) }
 

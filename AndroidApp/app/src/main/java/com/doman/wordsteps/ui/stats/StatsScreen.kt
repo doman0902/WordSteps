@@ -126,6 +126,10 @@ fun StatsScreen(
                         if (state.dailyStats.isNotEmpty()) {
                             AccuracyChartCard(state.dailyStats)
                         }
+                        if (state.patterns.isNotEmpty()) {
+                            RadarChartCard(patterns = state.patterns)
+                            Spacer(Modifier.height(16.dp))
+                        }
                         PatternBreakdownCard(state.patterns)
                         RecentMistakesCard(state.recentMistakes)
                     } else {
@@ -207,7 +211,6 @@ private fun StreakStat(emoji: String, value: String, label: String, color: Color
 
 @Composable
 private fun AccuracyChartCard(dailyStats: List<DailyStats>) {
-    // dailyStats comes newest-first from DB, reverse for chart left→right
     val sorted = dailyStats.reversed()
     val dateLabel = SimpleDateFormat("MMM d", Locale.getDefault())
 
@@ -233,7 +236,6 @@ private fun AccuracyChartCard(dailyStats: List<DailyStats>) {
                 val chartH    = h - padBottom - padTop
                 val stepX     = w / (sorted.size - 1).toFloat()
 
-                // Grid lines at 0%, 50%, 100%
                 listOf(0f, 0.5f, 1f).forEach { frac ->
                     val y = padTop + chartH * (1f - frac)
                     drawLine(
@@ -244,7 +246,6 @@ private fun AccuracyChartCard(dailyStats: List<DailyStats>) {
                     )
                 }
 
-                // Filled area under the line
                 val fillPath = Path().apply {
                     sorted.forEachIndexed { i, day ->
                         val x = i * stepX
@@ -262,7 +263,6 @@ private fun AccuracyChartCard(dailyStats: List<DailyStats>) {
                     )
                 )
 
-                // Line
                 val linePath = Path().apply {
                     sorted.forEachIndexed { i, day ->
                         val x = i * stepX
@@ -276,7 +276,6 @@ private fun AccuracyChartCard(dailyStats: List<DailyStats>) {
                     style       = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
                 )
 
-                // Dots
                 sorted.forEachIndexed { i, day ->
                     val x = i * stepX
                     val y = padTop + chartH * (1f - day.accuracy)
@@ -285,7 +284,6 @@ private fun AccuracyChartCard(dailyStats: List<DailyStats>) {
                 }
             }
 
-            // X-axis labels — show first, middle, last
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                 val indices = listOf(0, sorted.size / 2, sorted.size - 1).distinct()
                 val shown   = sorted.filterIndexed { i, _ -> i in indices }
@@ -451,7 +449,6 @@ private fun TimedLeaderboardCard(
         }
         Spacer(Modifier.height(14.dp))
 
-        // Duration tabs
         Row(
             Modifier.fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
@@ -510,7 +507,6 @@ private fun TimedLeaderboardCard(
     }
 }
 
-// ── Reusable card ─────────────────────────────────────────────────────────────
 @Composable
 private fun SectionCard(content: @Composable ColumnScope.() -> Unit) {
     Column(

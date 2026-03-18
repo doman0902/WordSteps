@@ -20,6 +20,9 @@ import com.doman.wordsteps.data.repository.SpellRepository
 import com.doman.wordsteps.ui.home.HomeScreen
 import com.doman.wordsteps.ui.home.HomeViewModel
 import com.doman.wordsteps.ui.home.HomeViewModelFactory
+import com.doman.wordsteps.ui.patternhunt.PatternHuntScreen
+import com.doman.wordsteps.ui.patternhunt.PatternHuntViewModel
+import com.doman.wordsteps.ui.patternhunt.PatternHuntViewModelFactory
 import com.doman.wordsteps.ui.practice.PracticeMode
 import com.doman.wordsteps.ui.practice.PracticeScreen
 import com.doman.wordsteps.ui.practice.PracticeViewModel
@@ -52,6 +55,8 @@ object Routes {
     const val SETTINGS = "settings"
 
     const val RECONSTRUCTION = "reconstruction"
+
+    const val PATTERN_HUNT     = "pattern_hunt"
 }
 
 class MainActivity : ComponentActivity() {
@@ -63,6 +68,7 @@ class MainActivity : ComponentActivity() {
         val mlApi      = MLApiService(prefs)
         val loader     = DatasetLoader(applicationContext).also { it.loadDataset() }
         val repository = SpellRepository(database, mlApi, loader)
+
 
         setContent {
             WordStepsTheme {
@@ -86,7 +92,7 @@ fun WordStepsApp(
     NavHost(navController = navController, startDestination = Routes.HOME) {
 
         composable(Routes.HOME) {
-            val vm: HomeViewModel = viewModel(factory = HomeViewModelFactory(repository))
+            val vm: HomeViewModel = viewModel(factory = HomeViewModelFactory(repository,prefs))
             HomeScreen(
                 viewModel       = vm,
                 onStartPractice = { navController.navigate(Routes.PRACTICE) },
@@ -95,6 +101,7 @@ fun WordStepsApp(
                 onStartTyping   = { navController.navigate(Routes.TYPING) },
                 onStartReconstruction = { navController.navigate(Routes.RECONSTRUCTION) },
                 onStartTimed = { navController.navigate(Routes.TIMED) },
+                onStartPatternHunt    = { navController.navigate(Routes.PATTERN_HUNT) },
                 onOpenSettings  = { navController.navigate(Routes.SETTINGS) }
             )
         }
@@ -156,6 +163,17 @@ fun WordStepsApp(
         composable(Routes.TIMED) {
             val vm: TimedViewModel = viewModel(factory = TimedViewModelFactory(repository,database))
             TimedScreen(viewModel = vm, onNavigateBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.PATTERN_HUNT) { backStackEntry ->
+            val vm: PatternHuntViewModel = viewModel(
+                viewModelStoreOwner = backStackEntry,
+                factory = PatternHuntViewModelFactory(repository)
+            )
+            PatternHuntScreen(
+                viewModel      = vm,
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
         composable(Routes.SETTINGS) {
